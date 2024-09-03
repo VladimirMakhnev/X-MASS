@@ -1,0 +1,17 @@
+version:21.12.23
+addl_ident:
+gas_name:H2O
+wn_begin:0.0
+wn_end:35000.0
+comment:H2O 
+Gas_Q_abs_Absorbtion:H2O
+addl_ident:
+gas_name:H2O
+comment:H2O pRT
+Gas_index:01
+Pressure:10
+Temperature:13
+Broadener_Q_brd_VMR:00
+broadener_name:air
+Broadener_Index:00
+Wavenumber:7000001
