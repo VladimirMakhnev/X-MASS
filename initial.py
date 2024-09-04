@@ -127,6 +127,7 @@ def openXgenetareWn(fname,params):
         print('%s file is not found!'%fname)
         sys.exit()
 
+# collects the pressures/temperatures/volume mixing ration into the pTVMS array
 def mergeParams(P,T,VMS):
     onevisionlist = []
     indexvisionlist = []

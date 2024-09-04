@@ -100,7 +100,7 @@ def UpdateHDF5(ftype, pTVMS, ipTVMS, param):
         tp, tt, tv = tptvms[0], tptvms[1], tptvms[2]
         print('Opening %d file out of %d'%(i,len(pTVMS)))
 
-        CoefFileName = './datafiles/H2O_HITRAN20_pRT/%06.2fT_Id%02d_%06.4eatm_IdBroad%02d_%06.4fVMS_H2O_SDV_hitran2020.dat'%(tt,IndexMol,tp,IndexBroad,tv)
+        CoefFileName = './datafiles/%06.2fT_Id%02d_%06.4eatm_IdBroad%02d_%06.4fVMS_H2O_SDV_hitran2020.dat'%(tt,IndexMol,tp,IndexBroad,tv)
         coeff = ((np.loadtxt(CoefFileName)).T)[1]
 
 

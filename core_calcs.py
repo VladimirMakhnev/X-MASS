@@ -10,11 +10,10 @@ import matplotlib as mpl
 #from hapi2 import *
 #from hapi import *
 import hapi as hapi1
-import hapi2
+# import hapi2
 
 import sys
 import os
-# print('Number of CPUs in the system: {}'.format(os.cpu_count()))
 
 
 from multiprocessing import Pool
@@ -53,10 +52,11 @@ def ParallelPart(pTVMS,WNs,ParametersCalculation,Nwn,Npp,Ntt,Nvms,co_hdf5,METHOD
     # hapi1.getHelp(hapi1.fetch)
 
     hapitable = hapi1.LOCAL_TABLE_CACHE
-#    print('\nParallel part, hapitable\n', hapitable)
 
     if (METHOD=='PC'):
         print('METHOD IS ASYNCIO')
+        print('Number of CPUs in the system: {}'.format(os.cpu_count()))
+
         loop = asyncio.get_event_loop()                                              # Have a new event loop
         looper = asyncio.gather(*[CalculateXsecAS(p, T,VMS, WNs,ParametersCalculation,Nwn,hapitable) for (p, T, VMS) in pTVMS])         # Run the loop
         results = loop.run_until_complete(looper)                                    # Wait until finish
@@ -66,6 +66,7 @@ def ParallelPart(pTVMS,WNs,ParametersCalculation,Nwn,Npp,Ntt,Nvms,co_hdf5,METHOD
             t_myarg = (p, T, VMS, WNs, ParametersCalculation, Nwn, hapitable)
             CalculateXsec(t_myarg) 
     elif (METHOD=='MULTITHREADING'):
+        print('Number of CPUs in the system: {}'.format(os.cpu_count()))
         print('METHOD IS MULTIPROCESSING')
         N_threads = 7
         Nptvms = len(pTVMS)
@@ -169,7 +170,7 @@ def CalculateXsec(args):
         
         
         # PROBLEM: FIX THE NAME AT UPD_HDF5 TOO!
-        CoefFileName = './datafiles/H2O_HITRAN20_pRT/%06.2fT_Id%02d_%06.4eatm_IdBroad%02d_%06.4fVMS_O3_SDV_hitran2020.dat'%(Temp,IndexMol,pres,IndexBroad,VMS)
+        CoefFileName = './datafiles/%06.2fT_Id%02d_%06.4eatm_IdBroad%02d_%06.4fVMS_H2O_SDV_hitran2020.dat'%(Temp,IndexMol,pres,IndexBroad,VMS)
         # print("named?")
         # nu_co,coef_co = absorptionCoefficient_Voigt(SourceTables='05_HITEMP2019-full',#'07_all_iso_hit20_0k-35k',#'05_HITEMP2019',#'CO_all_HITRAN',#
         #                                               HITRAN_units=True, OmegaRange=[wn_begin,wn_end],
@@ -219,7 +220,7 @@ def CalculateXsec(args):
         print("Unexpected %s"%(err))
         sys.exit()
     
-# @background
+@background
 def CalculateXsecAS(pres, Temp, VMS,WN_range, param, Nwn, hapitable):
     
     print('Calculate xsec, hapitable')
@@ -252,7 +253,7 @@ def CalculateXsecAS(pres, Temp, VMS,WN_range, param, Nwn, hapitable):
         
         
         # PROBLEM: FIX THE NAME AT UPD_HDF5 TOO!
-        CoefFileName = './datafiles/H2O_HITRAN20_pRT/%06.2fT_Id%02d_%06.4eatm_IdBroad%02d_%06.4fVMS_H2O_SDV_hitran2020.dat'%(Temp,IndexMol,pres,IndexBroad,VMS)
+        CoefFileName = './datafiles/%06.2fT_Id%02d_%06.4eatm_IdBroad%02d_%06.4fVMS_H2O_SDV_hitran2020.dat'%(Temp,IndexMol,pres,IndexBroad,VMS)
         # print("named?")
         # nu_co,coef_co = absorptionCoefficient_Voigt(SourceTables='05_HITEMP2019-full',#'07_all_iso_hit20_0k-35k',#'05_HITEMP2019',#'CO_all_HITRAN',#
         #                                               HITRAN_units=True, OmegaRange=[wn_begin,wn_end],
@@ -278,7 +279,7 @@ def CalculateXsecAS(pres, Temp, VMS,WN_range, param, Nwn, hapitable):
                                                             WavenumberWing=25.,OmegaWingHW=0.0,LineMixingRosen=False,
                                                             Environment={'T':Temp,'p':pres},
                                                             Diluent={'self':1.00-VMS, 'air':VMS},
-                                                            File = CoefFileName)
+                                                            File = CoefFileName,hapitab=hapitable)
                                                             # Components=[(5,1,(1-VMS)),(5,2,(1-VMS)),(5,3,(1-VMS)),(5,4,(1-VMS)),(5,5,(1-VMS)),(5,6,(1-VMS)),],
 
         
