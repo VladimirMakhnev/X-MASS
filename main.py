@@ -88,9 +88,9 @@ if __name__ == "__main__":
     (VMS_FILENAME   := sys.argv[4]) if (argvlen>4) else (VMS_FILENAME := 'vms.inp')
     (WN_FILENAME    := sys.argv[5]) if (argvlen>5) else (WN_FILENAME := 'wn.inp')
     (HDF5FileName   := sys.argv[6]) if (argvlen>6) else (HDF5FileName := '01.H2O.SDV.HITRAN2020.25wing.hdf5')
-    # (METHOD         := sys.argv[7]) if (argvlen>7) else (METHOD := 'MULTITHREADING')
+    (METHOD         := sys.argv[7]) if (argvlen>7) else (METHOD := 'MULTITHREADING')
     # (METHOD         := sys.argv[7]) if (argvlen>7) else (METHOD := 'PLAIN')
-    (METHOD         := sys.argv[7]) if (argvlen>7) else (METHOD := 'PC')
+    # (METHOD         := sys.argv[7]) if (argvlen>7) else (METHOD := 'PC')
 
     # Opening parameter file
     ParametersCalculation = initial.openParametersFile(PARAM_FILENAME)

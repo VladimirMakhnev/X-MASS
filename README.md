@@ -1,2 +1,8 @@
 # X-MASS
  A TOOL FOR SIMULTANEOUS CALCULATIONS OF CROSS-SECTIONS COVERING A LARGE PARAMETER SPACE FOR ATMOSPHERIC APPLICATIONS
+
+# How to use
+
+ Extract to the working folder
+ Don't forget to set up .json file!
+ 
