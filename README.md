@@ -25,9 +25,35 @@ Clone the repository and install the necessary dependencies:
 
 ```bash
 git clone https://github.com/your-username/x-mass.git
-cd x-mass
-pip install -r requirements.txt
+cd x-mass ```
+
+## How to use 
+
+```pythoon main.py params.inp pres_pRT.inp temps.inp vms.inp wn.inp 01.H2O.SDV.HITRAN2020.25wing.hdf5 MULTITHREADING 
 ```
+where: 
+**params.inp** is a file with parameters
+**pres_pRT.inp** is a file with pressure profile
+**temps.inp** is a file with temperature profile
+**vms.inp** is a file with volume mixing ratio
+**wn.inp** is a file with wavenumber grin length
+**01.H2O.SDV.HITRAN2020.25wing.hdf5** is a filename of resulting HDF5 file
+**MULTITHREADING** is the method
+
+## Options of calculation method
+
+**PLAIN** -- the subsequential calculation of cross-sections one by one;
+**PC** -- the ```asyncio``` calculation;
+**MULTITHREADING** -- the ```multiprocessing``` calculation.
+
+
+
+
+
+
+
+
+
 
 ### Basic Markdown Format Rules:
 - **Headers:** Use `#`, `##`, `###` to create header levels.
