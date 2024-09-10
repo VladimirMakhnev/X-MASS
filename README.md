@@ -35,11 +35,13 @@ cd x-mass
 
 where: 
 
+| **File**                              | **Description**                    |
+|---------------------------------------|------------------------------------|
 | **params.inp**                        | a file with parameters             |
 | **pres_pRT.inp**                      | a file with pressure profile       |
 | **temps.inp**                         | a file with temperature profile    |
 | **vms.inp**                           | a file with volume mixing ratio    |
-| **wn.inp**                            | a file with wavenumber grin length |
+| **wn.inp**                            | a file with wavenumber grid length |
 | **01.H2O.SDV.HITRAN2020.25wing.hdf5** | a filename of resulting HDF5 file  |
 | **MULTITHREADING**                    | the method                         |
 
