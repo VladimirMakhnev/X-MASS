@@ -29,16 +29,15 @@ cd x-mass ```
 
 ## How to use 
 
-```pythoon main.py params.inp pres_pRT.inp temps.inp vms.inp wn.inp 01.H2O.SDV.HITRAN2020.25wing.hdf5 MULTITHREADING 
-```
+```pythoon main.py params.inp pres_pRT.inp temps.inp vms.inp wn.inp 01.H2O.SDV.HITRAN2020.25wing.hdf5 MULTITHREADING ```
 where: 
-**params.inp** is a file with parameters
-**pres_pRT.inp** is a file with pressure profile
-**temps.inp** is a file with temperature profile
-**vms.inp** is a file with volume mixing ratio
-**wn.inp** is a file with wavenumber grin length
-**01.H2O.SDV.HITRAN2020.25wing.hdf5** is a filename of resulting HDF5 file
-**MULTITHREADING** is the method
+**params.inp** | a file with parameters
+**pres_pRT.inp** | a file with pressure profile
+**temps.inp** | a file with temperature profile
+**vms.inp** | a file with volume mixing ratio
+**wn.inp** | a file with wavenumber grin length
+**01.H2O.SDV.HITRAN2020.25wing.hdf5** | a filename of resulting HDF5 file
+**MULTITHREADING** | the method
 
 ## Options of calculation method
 
