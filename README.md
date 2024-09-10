@@ -23,9 +23,11 @@ A Python tool (X-MASS) that allows the massive set of ABSCO tables to be calcula
 
 Clone the repository and install the necessary dependencies:
 
-```bash
+```
+bash
 git clone https://github.com/your-username/x-mass.git
-cd x-mass ```
+cd x-mass 
+```
 
 ## How to use 
 
