@@ -29,7 +29,7 @@ cd x-mass ```
 
 ## How to use 
 
-```pythoon main.py params.inp pres_pRT.inp temps.inp vms.inp wn.inp 01.H2O.SDV.HITRAN2020.25wing.hdf5 MULTITHREADING ```
+`pythoon main.py params.inp pres_pRT.inp temps.inp vms.inp wn.inp 01.H2O.SDV.HITRAN2020.25wing.hdf5 MULTITHREADING `
 
 where: 
 **params.inp** | a file with parameters
