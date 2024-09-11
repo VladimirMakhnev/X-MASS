@@ -12,10 +12,11 @@ A Python tool (X-MASS) that allows the massive set of ABSCO tables to be calcula
 ## Requirements
 
 - Python 3.x
-- HAPI (HITRAN Application Programming Interface)
+- [HAPI](github.com/hitranonline/hapi) (HITRAN Application Programming Interface)
 - NumPy
-- Matplotlib
-- H5py
+- matplotlib
+- [h5py](h5py.org)
+- multiprocessing/asyncio/nest_asyncio
 
 ## Installation
 
@@ -25,11 +26,13 @@ Clone the repository and install the necessary dependencies:
 
 ```
 bash
-git clone https://github.com/your-username/x-mass.git
+git clone https://github.com/VladimirMakhnev/X-MASS.git
 cd x-mass 
 ```
 
 ## How to use 
+
+Launch the main.py script in folder with all input files:
 
 `pythoon main.py params.inp pres_pRT.inp temps.inp vms.inp wn.inp 01.H2O.SDV.HITRAN2020.25wing.hdf5 MULTITHREADING `
 
@@ -43,12 +46,14 @@ where:
 | **vms.inp**                           | a file with volume mixing ratio    |
 | **wn.inp**                            | a file with wavenumber grid length |
 | **01.H2O.SDV.HITRAN2020.25wing.hdf5** | a filename of resulting HDF5 file  |
-| **MULTITHREADING**                    | the method                         |
+| **MULTITHREADING**                    | a method of parallelization        |
 
 ## Options of calculation method
 
-**PLAIN** -- the subsequential calculation of cross-sections one by one;
+**PLAIN** -- the sequential calculation of cross-sections one at the time;
+
 **PC** -- the ```asyncio``` calculation;
+
 **MULTITHREADING** -- the ```multiprocessing``` calculation.
 
 
