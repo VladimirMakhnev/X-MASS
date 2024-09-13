@@ -89,42 +89,6 @@ def ParallelPart(pTVMS,WNs,ParametersCalculation,Nwn,Npp,Ntt,Nvms,co_hdf5,METHOD
         except InvalidCoreCount:
             print("Exception occurred: requested too many cores!")
             sys.exit()
-### WORKING PART
-#        pros = np.empty(len(pTVMS),dtype=type(Process))
-#        for iptvms in np.arange(len(pTVMS)):
-#            (p,T,VMS) = pTVMS[iptvms]
-#            print(p,T,VMS)
-#            print(iptvms)
-#            pros[iptvms] = Process(target=CalculateXsec, args=(p, T,VMS, WNs,ParametersCalculation,Nwn,hapitable))
-#            pros[iptvms].start()
-#            
-#        for i in np.arange(len(pTVMS)):
-#            pros[i].join() 
-###
-#        Nptvms = len(pTVMS)
-#        Nucore = 15
-#        pros = np.empty(Nucore,dtype=type(Process))
-#        for n_current in np.arange(Nptvms//Nucore):
-#            pros = np.empty(Nucore,dtype=type(Process))
-#
-#            for i_itern in np.arange(Nucore):
-#                (p,T,VMS) = pTVMS[i_itern + n_current*Nucore]
-#                print(p,T,VMS)
-#                print(i_itern + n_current*Nucore)
-#                pros[i_itern] = Process(target=CalculateXsec, args=(p, T,VMS, WNs,ParametersCalculation,Nwn,hapitable))
-#                pros[i_itern].start()
-#            for i in np.arange(Nucore):
-#                pros[i].join() 
-#        pros = np.empty(Nucore,dtype=type(Process))
-#        for i_rest in np.arange(Nucore*(Nptvms//Nucore),Nptvms):
-#            (p,T,VMS) = pTVMS[rest]
-#            print(p,T,VMS)
-#            print(i_rest)
-#            i_resty = i_rest - Nucore*Nptvms//Nucore
-#            pros[i_resty] = Process(target=CalculateXsec, args=(p, T,VMS, WNs,ParametersCalculation,Nwn,hapitable))
-#            pros[i_resty].start()
-#        for i_rest in np.arange(-Nucore*(Nptvms//Nucore)+Nptvms):
-#            pros[i_rest].join()
 
         
     else:
@@ -210,15 +174,7 @@ def CalculateXsec(args):
                                                             File = CoefFileName,hapitab=hapitable)
                                                             # Components=[(5,1,(1-VMS)),(5,2,(1-VMS)),(5,3,(1-VMS)),(5,4,(1-VMS)),(5,5,(1-VMS)),(5,6,(1-VMS)),],
 
-        
 
-                                                      #'05_HITEMP2019-full',#'07_all_iso_hit20_0k-35k',#'05_HITEMP2019',#'CO_all_HITRAN',#
-                                                      #HITRAN_units=True, OmegaRange=[wn_begin,wn_end],
-                                                      #WavenumberStep=wn_step,
-                                                      #WavenumberWing=25.0,
-                                                      #OmegaWingHW=0.0,
-                                                      #Diluent={'self':1.00-VMS, 'air':VMS},
-                                                      #Environment={'T':Temp,'p':pres})
         xunc_l, xunc_u = np.zeros(len(nu_co)),np.zeros(len(nu_co))                                       
         save_xsc( CoefFileName, nu_co, coef_co, xunc_l, xunc_u  )
         # print('saved?')

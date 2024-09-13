@@ -81,14 +81,15 @@ if __name__ == "__main__":
     print("***********************************************")
     
     
-    argvlen = len(sys.argv)
-    (PARAM_FILENAME := sys.argv[1]) if (argvlen>1) else (PARAM_FILENAME := 'params.inp')
-    (PRES_FILENAME  := sys.argv[2]) if (argvlen>2) else (PRES_FILENAME := 'pres_pRT.inp')
-    (TEMP_FILENAME  := sys.argv[3]) if (argvlen>3) else (TEMP_FILENAME := 'temps_pRT.inp')
-    (VMS_FILENAME   := sys.argv[4]) if (argvlen>4) else (VMS_FILENAME := 'vms.inp')
-    (WN_FILENAME    := sys.argv[5]) if (argvlen>5) else (WN_FILENAME := 'wn.inp')
-    (HDF5FileName   := sys.argv[6]) if (argvlen>6) else (HDF5FileName := '01.H2O.SDV.HITRAN2020.25wing.hdf5')
-    (METHOD         := sys.argv[7]) if (argvlen>7) else (METHOD := 'MULTITHREADING')
+    argvlen = ((open('filenames.inp',mode='r')).read()).split()
+    print(argvlen)
+    (PARAM_FILENAME := argvlen[1]) if (len(argvlen)>1) else (PARAM_FILENAME := 'params.inp')
+    (PRES_FILENAME  := argvlen[2]) if (len(argvlen)>2) else (PRES_FILENAME := 'pres_pRT.inp')
+    (TEMP_FILENAME  := argvlen[3]) if (len(argvlen)>3) else (TEMP_FILENAME := 'temps_pRT.inp')
+    (VMS_FILENAME   := argvlen[4]) if (len(argvlen)>4) else (VMS_FILENAME := 'vms.inp')
+    (WN_FILENAME    := argvlen[5]) if (len(argvlen)>5) else (WN_FILENAME := 'wn.inp')
+    (HDF5FileName   := argvlen[6]) if (len(argvlen)>6) else (HDF5FileName := '01.H2O.SDV.HITRAN2020.25wing.hdf5')
+    (METHOD         := argvlen[7]) if (len(argvlen)>7) else (METHOD := 'MULTITHREADING')
     # (METHOD         := sys.argv[7]) if (argvlen>7) else (METHOD := 'PLAIN')
     # (METHOD         := sys.argv[7]) if (argvlen>7) else (METHOD := 'PC')
 
