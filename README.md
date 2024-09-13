@@ -1,5 +1,7 @@
 # X-MASS
 
+## Introduction
+
 A Python tool (X-MASS) that allows the massive set of ABSCO tables to be calculated using the HAPI software packagee with complete utilization of the parameters’ accuracy in HITRAN, including sophisticated line shapes
 
 ## Features
@@ -34,9 +36,9 @@ cd x-mass
 
 Launch the main.py script in folder with all input files:
 
-`pythoon main.py params.inp pres_pRT.inp temps.inp vms.inp wn.inp 01.H2O.SDV.HITRAN2020.25wing.hdf5 MULTITHREADING `
+`python main.py `
 
-where: 
+where filenames.inp contains info about all other files and method of calculation: 
 
 | **File**                              | **Description**                    |
 |---------------------------------------|------------------------------------|
@@ -65,14 +67,6 @@ where:
 
 
 
-### Basic Markdown Format Rules:
-- **Headers:** Use `#`, `##`, `###` to create header levels.
-- **Emphasis:** Use `*text*` or `_text_` for italics, and `**text**` for bold.
-- **Lists:** Use `-` or `*` for unordered lists, and `1.` for ordered lists.
-- **Links:** `[Link text](URL)` to create links.
-- **Images:** `![Alt text](Image URL)` for images.
-- **Code blocks:** Use triple backticks (```) for code blocks, and single backticks (`) for inline code.```
-- **Tables:** Create tables using pipes (`|`) and hyphens for column separation.
 
 
 
