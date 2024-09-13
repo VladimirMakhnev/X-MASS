@@ -1,11 +1,11 @@
-version:21.12.23
+version:12.09.24
 addl_ident:
 gas_name:H2O
 wn_begin:33000.0
 wn_end:35000.0
 comment:H2O 
 Gas_Q_abs_Absorbtion:H2O
-addl_ident:
+addl_ident:None
 gas_name:H2O
 comment:H2O pRT
 Gas_index:01
@@ -15,3 +15,6 @@ Broadener_Q_brd_VMR:00
 broadener_name:air
 Broadener_Index:00
 Wavenumber:20001
+Number_cores:9
+Profile:
+Profile_group:

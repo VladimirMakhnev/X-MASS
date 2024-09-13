@@ -18,15 +18,15 @@ def OpenHDF5(fname,params,pres, temp, vms, wns, Np, Nt, Nvms, Nwn):
         
 # saturating the attributes        
         [f.attrs.__setitem__(item[0],item[1]) for item in params[:6] ]
-
+        
         Index_abs = INDEX_TEMP
         Index_broad = INDEX_Qbrd_TEMP
         dataset_name = 'Gas_'+Index_abs+'_Absorption'
         dataset_broadname = 'Broadener_'+Index_broad+'_VMS'
         ds_coef = f.create_dataset(dataset_name,shape=(Np,Nt,Nvms,Nwn),dtype='float64', compression="gzip", compression_opts=4)
-        ds_coef.attrs.__setitem__('addl_ident', '')
-        ds_coef.attrs.__setitem__('gas_name', 'CO')
-        ds_coef.attrs.__setitem__('comment', '')
+        ds_coef.attrs.__setitem__('addl_ident', params[7][1])
+        ds_coef.attrs.__setitem__('gas_name', params[8][1])
+        ds_coef.attrs.__setitem__('comment', params[9][1])
 
         ds_index = f.create_dataset('Gas_Index',data=INDEX_TEMP)
         ds_pres = f.create_dataset('Pressure',data=pres)
@@ -40,9 +40,16 @@ def OpenHDF5(fname,params,pres, temp, vms, wns, Np, Nt, Nvms, Nwn):
 #        print(ds_pres[()])
         if (FLAG_DEBUG_PRINT):
             print('*** DEBUG: Attributes ***')
+            print('Attributes -- root')
             [print(item, f.attrs[item]) for item in f.attrs.keys()]
             print(f.keys())
             [print(f[item]) for item in f.keys()]
+            for item in f.keys():
+                print('    ',f[item].attrs.keys())
+                for jtem in f[item].attrs.keys():
+                    print('        ',item,f[item].attrs[jtem])
+                # if type(item) not ''
+            #     [print(jtem, item[jtem]) for jtem in item.keys()]
             print('*** END: Attributes ***\n')
         return f
     except FileExistsError:

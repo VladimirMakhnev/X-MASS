@@ -66,18 +66,29 @@ def ParallelPart(pTVMS,WNs,ParametersCalculation,Nwn,Npp,Ntt,Nvms,co_hdf5,METHOD
             t_myarg = (p, T, VMS, WNs, ParametersCalculation, Nwn, hapitable)
             CalculateXsec(t_myarg) 
     elif (METHOD=='MULTITHREADING'):
-        print('Number of CPUs in the system: {}'.format(os.cpu_count()))
-        print('METHOD IS MULTIPROCESSING')
-        N_threads = 7
-        Nptvms = len(pTVMS)
-        myargs = []
-        for iptvms in np.arange(Nptvms):
-            p, T, VMS = pTVMS[iptvms]
-            t_myarg = (p, T, VMS, WNs, ParametersCalculation, Nwn, hapitable)
-            myargs.append(t_myarg)
-#        print(myargs)
-        pool = Pool(N_threads)
-        results = pool.map(CalculateXsec, myargs)
+        class InvalidCoreCount(Exception):
+            "Raised when the number of cores requested more than existed"
+            pass
+
+        try:
+            print('Number of CPUs in the system: {}'.format(os.cpu_count()))
+            print('METHOD IS MULTIPROCESSING')
+            N_threads = int(ParametersCalculation[17][1])
+            if (N_threads>os.cpu_count()):
+                raise InvalidCoreCount
+            print('Number of CPUs used: %d'%N_threads)
+            Nptvms = len(pTVMS)
+            myargs = []
+            for iptvms in np.arange(Nptvms):
+                p, T, VMS = pTVMS[iptvms]
+                t_myarg = (p, T, VMS, WNs, ParametersCalculation, Nwn, hapitable)
+                myargs.append(t_myarg)
+    #        print(myargs)
+            pool = Pool(N_threads)
+            results = pool.map(CalculateXsec, myargs)
+        except InvalidCoreCount:
+            print("Exception occurred: requested too many cores!")
+            sys.exit()
 ### WORKING PART
 #        pros = np.empty(len(pTVMS),dtype=type(Process))
 #        for iptvms in np.arange(len(pTVMS)):
