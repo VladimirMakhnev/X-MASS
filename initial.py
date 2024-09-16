@@ -96,7 +96,9 @@ def openVMS(fname):
             else:
                 print(avms)
             print('*** END: VMS input ***\n')
-        avms = [avms]
+        if (len(avms)==1):
+            avms = [avms]
+        # avms = [avms]
         print('*********\nVMS file %s is opened well\nTotal number of lines: %d\n*********'%(fname,len(avms)))
         return avms, len(avms)
     except FileNotFoundError:

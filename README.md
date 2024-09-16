@@ -44,7 +44,9 @@ where filenames.inp contains info about all other files and method of calculatio
 |---------------------------------------|------------------------------------|
 | **params.inp**                        | a file with parameters             |
 | **pres_pRT.inp**                      | a file with pressure profile       |
+|                                       | (in bar*1e3                        |
 | **temps.inp**                         | a file with temperature profile    |
+|                                       | (in K)                             |
 | **vms.inp**                           | a file with volume mixing ratio    |
 | **wn.inp**                            | a file with wavenumber grid length |
 | **01.H2O.SDV.HITRAN2020.25wing.hdf5** | a filename of resulting HDF5 file  |

@@ -82,7 +82,9 @@ def ParallelPart(pTVMS,WNs,ParametersCalculation,Nwn,Npp,Ntt,Nvms,co_hdf5,METHOD
             myargs = []
             for iptvms in np.arange(Nptvms):
                 p, T, VMS = pTVMS[iptvms]
-                t_myarg = (p, T, VMS, WNs, ParametersCalculation, Nwn, hapitable)
+                # t_myarg = (p, T, VMS, WNs, ParametersCalculation, Nwn, hapitable)
+                t_myarg = (p, T, VMS, WNs, ParametersCalculation, Nwn, tab_name)
+
                 myargs.append(t_myarg)
     #        print(myargs)
             pool = Pool(N_threads)
@@ -115,7 +117,7 @@ def save_xsc( filename, vals_nu, vals_abs  , vals_unc_l, vals_unc_u):
 # calculate x-sec for exact P, T, VMS of exact molecule
 # @background
 def CalculateXsec(args):
-    pres, Temp, VMS, WN_range, param, Nwn, hapitable = args
+    pres, Temp, VMS, WN_range, param, Nwn, tab_name = args
     print('Calculate xsec, hapitable')
     class NaNError(Exception):
         'Corrupted p, T or VMS value'
@@ -158,8 +160,8 @@ def CalculateXsec(args):
         #                                               File = CoefFileName)
         # tab_name = '03_HITRAN2020'
         # hapi1.fetch_by_ids(  tab_name, [16,17,18,19,20],   wn_begin,  wn_end,   ParameterGroups=['160-char'])
-        hapi1.LOCAL_TABLE_CACHE = hapitable
-        print(hapitable.keys())
+        hapi1.LOCAL_TABLE_CACHE = hapi1.storage2cache(tab_name)
+        # print(hapitable.keys())
         # nu_co,coef_co,xunc_l, xunc_u = hapi2.opacity.lbl.numba.absorptionCoefficient_Voigt(SourceTables='05_SDV_HITRAN2020',
         #                                                                     OmegaStep = wn_step,
         #                                                                     OmegaWing=25.0,
@@ -172,7 +174,8 @@ def CalculateXsec(args):
                                                             WavenumberWing=25.,OmegaWingHW=0.0,LineMixingRosen=False,
                                                             Environment={'T':Temp,'p':pres},
                                                             Diluent={'self':1.00-VMS, 'air':VMS},
-                                                            File = CoefFileName,hapitab=hapitable)
+                                                            File = CoefFileName)
+                                                            # File = CoefFileName,hapitab=hapitable)
                                                             # Components=[(5,1,(1-VMS)),(5,2,(1-VMS)),(5,3,(1-VMS)),(5,4,(1-VMS)),(5,5,(1-VMS)),(5,6,(1-VMS)),],
 
 
