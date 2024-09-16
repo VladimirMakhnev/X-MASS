@@ -14,7 +14,7 @@ Temperature:13
 Broadener_Q_brd_VMR:00
 broadener_name:air
 Broadener_Index:00
-Wavenumber:20001
+Wavenumber:2001
 Number_cores:7
 Profile:
 Profile_group:

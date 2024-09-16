@@ -52,7 +52,8 @@ def ParallelPart(pTVMS,WNs,ParametersCalculation,Nwn,Npp,Ntt,Nvms,co_hdf5,METHOD
     # hapi1.getHelp(hapi1.fetch)
 
     hapitable = hapi1.LOCAL_TABLE_CACHE
-
+    
+    hapi1.cache2storage(tab_name)
     if (METHOD=='PC'):
         print('METHOD IS ASYNCIO')
         print('Number of CPUs in the system: {}'.format(os.cpu_count()))
