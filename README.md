@@ -14,10 +14,10 @@ A Python tool (X-MASS) that allows the massive set of ABSCO tables to be calcula
 ## Requirements
 
 - Python 3.x
-- [HAPI](github.com/hitranonline/hapi) (HITRAN Application Programming Interface)
+- [HAPI](https://github.com/hitranonline/hapi) (HITRAN Application Programming Interface)
 - NumPy
 - matplotlib
-- [h5py](h5py.org)
+- [h5py](https://h5py.org)
 - multiprocessing/asyncio/nest_asyncio
 
 ## Installation
@@ -34,11 +34,12 @@ cd x-mass
 
 ## How to use 
 
-Launch the main.py script in folder with all input files:
+Prepare input files at the directory with scripts.
+Launch the main.py script:
 
 `python main.py `
 
-where filenames.inp contains info about all other files and method of calculation: 
+where **filenames.inp** contains info about all other files and method of calculation: 
 
 | **File**                              | **Description**                    |
 |---------------------------------------|------------------------------------|
@@ -52,13 +53,19 @@ where filenames.inp contains info about all other files and method of calculatio
 | **01.H2O.SDV.HITRAN2020.25wing.hdf5** | a filename of resulting HDF5 file  |
 | **MULTITHREADING**                    | a method of parallelization        |
 
-## Options of calculation method
+### Options of calculation method
 
 **PLAIN** -- the sequential calculation of cross-sections one at the time;
 
 **PC** -- the ```asyncio``` calculation;
 
 **MULTITHREADING** -- the ```multiprocessing``` calculation.
+
+
+## Params file content
+
+The configuration of **params.inp** file is consistent with ABSCO table [manual](https://docserver.gesdisc.eosdis.nasa.gov/public/project/OCO/ABSCO_UsersGuide_20170724_corr2_v5.0.pdf). 
+First 11 lines correspond to the attributes from the manual, while next line describes: 
 
 
 
