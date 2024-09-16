@@ -44,7 +44,7 @@ where filenames.inp contains info about all other files and method of calculatio
 |---------------------------------------|------------------------------------|
 | **params.inp**                        | a file with parameters             |
 | **pres_pRT.inp**                      | a file with pressure profile       |
-|                                       | (in bar*1e3                        |
+|                                       | (in atm)                           |
 | **temps.inp**                         | a file with temperature profile    |
 |                                       | (in K)                             |
 | **vms.inp**                           | a file with volume mixing ratio    |

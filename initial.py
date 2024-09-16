@@ -46,7 +46,7 @@ def openParametersFile(fname):
 def openPressure(fname):
     try:
         apres = np.genfromtxt(fname,dtype='float')
-        apres = apres*1.0e-3
+        apres = apres#*1.0e-3
         global FLAG_DEBUG_PRINT
         if (FLAG_DEBUG_PRINT):
             print('*** DEBUG: Pressure input ***')

@@ -54,6 +54,11 @@ def ParallelPart(pTVMS,WNs,ParametersCalculation,Nwn,Npp,Ntt,Nvms,co_hdf5,METHOD
     hapitable = hapi1.LOCAL_TABLE_CACHE
     
     hapi1.cache2storage(tab_name)
+    
+    if ('datafiles' not in os.listdir('./')):
+        os.mkdir('datafiles')
+    
+    
     if (METHOD=='PC'):
         print('METHOD IS ASYNCIO')
         print('Number of CPUs in the system: {}'.format(os.cpu_count()))
@@ -141,7 +146,7 @@ def CalculateXsec(args):
             print('VMS=%4.2f, type='%VMS, type(VMS))
     #        print(tableList())
             print('Range from %8.2f to %8.2f, step %6.2f'%(wn_begin, wn_end,wn_step))
-            print('Pressure=%6.2f, temperature=%7.2f'%(pres,Temp))
+            print('Pressure=%6.2e, temperature=%7.2f'%(pres,Temp))
             print('*** END: X-sec ***\n')
         IndexMol = int(param[10][1])
         IndexBroad = int(param[15][1])
@@ -250,7 +255,7 @@ def CalculateXsecAS(pres, Temp, VMS,WN_range, param, Nwn, hapitable):
                                                             WavenumberWing=25.,OmegaWingHW=0.0,LineMixingRosen=False,
                                                             Environment={'T':Temp,'p':pres},
                                                             Diluent={'self':1.00-VMS, 'air':VMS},
-                                                            File = CoefFileName,hapitab=hapitable)
+                                                            File = CoefFileName)
                                                             # Components=[(5,1,(1-VMS)),(5,2,(1-VMS)),(5,3,(1-VMS)),(5,4,(1-VMS)),(5,5,(1-VMS)),(5,6,(1-VMS)),],
 
         
