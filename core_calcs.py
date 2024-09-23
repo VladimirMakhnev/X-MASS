@@ -69,7 +69,7 @@ def ParallelPart(pTVMS,WNs,ParametersCalculation,Nwn,Npp,Ntt,Nvms,co_hdf5,METHOD
     elif (METHOD=='PLAIN'):
         print('METHOD IS PLAIN')
         for (p, T, VMS) in pTVMS:
-            t_myarg = (p, T, VMS, WNs, ParametersCalculation, Nwn, hapitable)
+            t_myarg = (p, T, VMS, WNs, ParametersCalculation, Nwn, tab_name)
             CalculateXsec(t_myarg) 
     elif (METHOD=='MULTITHREADING'):
         class InvalidCoreCount(Exception):
