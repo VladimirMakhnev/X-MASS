@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 
 
 
-
+molec_id = 6
 
 
 
@@ -22,9 +22,9 @@ for i, item in enumerate(fnam.keys()):
 
 # pick one cross-section 
 
-ip, it, ivms = 9,4,1
+ip, it, ivms = 1,0,1
 wn = fnam['Wavenumber'][()]
-xsec = fnam['Gas_01_Absorption'][()][ip,it,ivms,:]
+xsec = fnam['Gas_%02d_Absorption'%molec_id][()][ip,it,ivms,:]
     
 
 # print chosen x-sec

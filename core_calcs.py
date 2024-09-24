@@ -35,21 +35,38 @@ def ParallelPart(pTVMS,WNs,ParametersCalculation,Nwn,Npp,Ntt,Nvms,co_hdf5,METHOD
     
     wn_begin = float(ParametersCalculation[3][1])
     wn_end = float(ParametersCalculation[4][1])
-    # tab_name = '05_HITEMP2019-full'
-    # hapi1.fetch('05_HITEMP2019-full', 05, I, numin, numax)
-    # hapi1.db_begin('HITRAN')
+
+    molec_id = int(ParametersCalculation[10][1])
+
+    par_group = ParametersCalculation[19][1]
+    par_group = [par_group]  
+    
+    iso_array = [[1,2,3,4,5,6,129],                           # H2O
+                 [7,8,9,10,11,12,13,14,15,120,121,122],       # CO2
+                 [16,17,18,19,20],                            # O3
+                 [21,22,23,24,25],                            # N2O
+                 [26,27,28,29,30,31],                         # CO
+                 [32,33,34,35],                               # CH4
+                 [36,37,38],                                  # O2
+                 [39,40,41],                                  # NO
+                 [42,43,137,138],                             # SO2
+                 [44,130],                                    # NO2
+                 [45,46],                                     # NH3
+                 [47,117] ]                                   # HNO3
+                 # To be updated!                          
+
+    iso_list = iso_array[molec_id-1]
 
 
 
 
-    tab_name = 'H2O_SDV_HITRAN2020'
-#    hapi1.fetch_by_ids(  tab_name, [26],   wn_begin,  wn_end,   ParameterGroups=['160-char',"SDvoigt"],
-#                        Parameters=['n_SDV_self_296','n_SDV_air_296','n_gamma_SDV_2_self_296','n_gamma_SDV_2_air_296'])
-    hapi1.fetch_by_ids(  tab_name, [1],   wn_begin,  wn_end,   ParameterGroups=['160-char'])
+    print('*** CORE_CALCS ***')
+    print(molec_id, par_group,iso_list)
 
-    # tab_name = '51_SDV_HITRAN2020'
-    # hapi1.db_begin('HITRAN')
-    # hapi1.getHelp(hapi1.fetch)
+    tab_name = 'HITRAN2020'
+    
+    
+    hapi1.fetch_by_ids(  tab_name, iso_list,   wn_begin,  wn_end,   ParameterGroups=par_group)
 
     hapitable = hapi1.LOCAL_TABLE_CACHE
     
@@ -165,8 +182,9 @@ def CalculateXsec(args):
         #                                               File = CoefFileName)
         # tab_name = '03_HITRAN2020'
         # hapi1.fetch_by_ids(  tab_name, [16,17,18,19,20],   wn_begin,  wn_end,   ParameterGroups=['160-char'])
-        hapi1.LOCAL_TABLE_CACHE = hapi1.storage2cache(tab_name)
-        # print(hapitable.keys())
+        # hapi1.LOCAL_TABLE_CACHE = hapi1.storage2cache(tab_name)
+        hapi1.storage2cache(tab_name)
+        # print(hapi1.LOCAL_TABLE_CACHE.keys())
         # nu_co,coef_co,xunc_l, xunc_u = hapi2.opacity.lbl.numba.absorptionCoefficient_Voigt(SourceTables='05_SDV_HITRAN2020',
         #                                                                     OmegaStep = wn_step,
         #                                                                     OmegaWing=25.0,
@@ -174,7 +192,7 @@ def CalculateXsec(args):
         #                                                                     WavenumberGrid=wngrid,
         #                                                                     Diluent={'self':1.00-VMS, 'air':VMS},
         #                                                                     Environment={'T':Temp,'p':pres},table_itself = hapitable)
-        nu_co,coef_co = hapi1.absorptionCoefficient_SDVoigt(SourceTables='H2O_SDV_HITRAN2020', HITRAN_units=True,
+        nu_co,coef_co = hapi1.absorptionCoefficient_SDVoigt(SourceTables='HITRAN2020', HITRAN_units=True,
                                                             OmegaRange=[wn_begin,wn_end],WavenumberStep=wn_step,  
                                                             WavenumberWing=25.,OmegaWingHW=0.0,LineMixingRosen=False,
                                                             Environment={'T':Temp,'p':pres},
@@ -250,7 +268,7 @@ def CalculateXsecAS(pres, Temp, VMS,WN_range, param, Nwn, hapitable):
         #                                                                     WavenumberGrid=wngrid,
         #                                                                     Diluent={'self':1.00-VMS, 'air':VMS},
         #                                                                     Environment={'T':Temp,'p':pres},table_itself = hapitable)
-        nu_co,coef_co = hapi1.absorptionCoefficient_SDVoigt(SourceTables='H2O_SDV_HITRAN2020', HITRAN_units=True,
+        nu_co,coef_co = hapi1.absorptionCoefficient_SDVoigt(SourceTables='HITRAN2020', HITRAN_units=True,
                                                             OmegaRange=[wn_begin,wn_end],WavenumberStep=wn_step,  
                                                             WavenumberWing=25.,OmegaWingHW=0.0,LineMixingRosen=False,
                                                             Environment={'T':Temp,'p':pres},

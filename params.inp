@@ -8,13 +8,13 @@ Gas_Q_abs_Absorbtion:H2O
 addl_ident:None
 gas_name:H2O
 comment:H2O pRT
-Gas_index:01
-Pressure:10
-Temperature:13
+Gas_index:06
+Pressure:2
+Temperature:2
 Broadener_Q_brd_VMR:00
 broadener_name:air
 Broadener_Index:00
 Wavenumber:5001
 Number_cores:7
-Profile:
-Profile_group:
+Profile:SVD
+Profile_group:160-char
