@@ -125,7 +125,6 @@ def ParallelPart(pTVMS,WNs,ParametersCalculation,Nwn,Npp,Ntt,Nvms,co_hdf5,METHOD
                 t_myarg = (p, T, VMS, WNs, ParametersCalculation, Nwn, tab_name)
 
                 myargs.append(t_myarg)
-    #        print(myargs)
             pool = Pool(N_threads)
             results = pool.map(CalculateXsec, myargs)
         except InvalidCoreCount:
@@ -135,8 +134,6 @@ def ParallelPart(pTVMS,WNs,ParametersCalculation,Nwn,Npp,Ntt,Nvms,co_hdf5,METHOD
         
     else:
         raise NameError('ERROR: Unknown method!') 
-    # for (p, T, VMS) in pTVMS:
-    #     CalculateXsec(p, T,VMS, WNs,ParametersCalculation,Nwn)
      
 
     return co_hdf5
@@ -154,27 +151,34 @@ def save_xsc( filename, vals_nu, vals_abs  , vals_unc_l, vals_unc_u):
 
 
 # calculate x-sec for exact P, T, VMS of exact molecule
-# @background
 def CalculateXsec(args):
     pres, Temp, VMS, WN_range, param, Nwn, tab_name = args
     print('Calculate xsec, hapitable')
     class NaNError(Exception):
         'Corrupted p, T or VMS value'
         pass
+    class ProfileNameError(Exception):
+        'Corrupted profile name'
+        pass
     
     try:
         if ((pres!=pres) or (Temp!=Temp) or (VMS!=VMS)):
             raise NaNError
-        # print('entered?')
         
         wn_begin = float(param[3][1])
         wn_end = float(param[4][1])
     
         wn_step = (wn_end-wn_begin)/(Nwn-1)
-        print('%25.22f'%wn_step)
-        print('core_calcs: wn_len', param[3][1],param[4][1])
-        print('core_calcs: wn_step',wn_step)
+        
+        profile_name = param[18][1]
+        print(profile_name)
+
+        # print('%25.22f'%wn_step)
+        # print('core_calcs: wn_len', param[3][1],param[4][1])
+        # print('core_calcs: wn_step',wn_step)
+
         wngrid =  np.linspace(wn_begin,wn_end,Nwn)
+
         if (FLAG_DEBUG_PRINT):
             print('*** DEBUG: X-sec ***')
             print('VMS=%4.2f, type='%VMS, type(VMS))
@@ -188,36 +192,25 @@ def CalculateXsec(args):
         
         # PROBLEM: FIX THE NAME AT UPD_HDF5 TOO!
         CoefFileName = './datafiles/%06.2fT_Id%02d_%06.4eatm_IdBroad%02d_%06.4fVMS_H2O_SDV_hitran2020.dat'%(Temp,IndexMol,pres,IndexBroad,VMS)
-        # print("named?")
-        # nu_co,coef_co = absorptionCoefficient_Voigt(SourceTables='05_HITEMP2019-full',#'07_all_iso_hit20_0k-35k',#'05_HITEMP2019',#'CO_all_HITRAN',#
-        #                                               HITRAN_units=True, OmegaRange=[wn_begin,wn_end],
-        #                                               WavenumberStep=wn_step,
-        #                                               WavenumberWing=25.0,
-        #                                               OmegaWingHW=0.0,
-        #                                               Diluent={'self':1.00-VMS, 'air':VMS},
-        #                                               Environment={'T':Temp,'p':pres},
-        #                                               File = CoefFileName)
-        # tab_name = '03_HITRAN2020'
-        # hapi1.fetch_by_ids(  tab_name, [16,17,18,19,20],   wn_begin,  wn_end,   ParameterGroups=['160-char'])
-        # hapi1.LOCAL_TABLE_CACHE = hapi1.storage2cache(tab_name)
         hapi1.storage2cache(tab_name)
         # print(hapi1.LOCAL_TABLE_CACHE.keys())
-        # nu_co,coef_co,xunc_l, xunc_u = hapi2.opacity.lbl.numba.absorptionCoefficient_Voigt(SourceTables='05_SDV_HITRAN2020',
-        #                                                                     OmegaStep = wn_step,
-        #                                                                     OmegaWing=25.0,
-        #                                                                     OmegaWingHW=0.0,
-        #                                                                     WavenumberGrid=wngrid,
-        #                                                                     Diluent={'self':1.00-VMS, 'air':VMS},
-        #                                                                     Environment={'T':Temp,'p':pres},table_itself = hapitable)
-        nu_co,coef_co = hapi1.absorptionCoefficient_SDVoigt(SourceTables='HITRAN2020', HITRAN_units=True,
-                                                            OmegaRange=[wn_begin,wn_end],WavenumberStep=wn_step,  
-                                                            WavenumberWing=25.,OmegaWingHW=0.0,LineMixingRosen=False,
-                                                            Environment={'T':Temp,'p':pres},
-                                                            Diluent={'self':1.00-VMS, 'air':VMS},
-                                                            File = CoefFileName)
-                                                            # File = CoefFileName,hapitab=hapitable)
-                                                            # Components=[(5,1,(1-VMS)),(5,2,(1-VMS)),(5,3,(1-VMS)),(5,4,(1-VMS)),(5,5,(1-VMS)),(5,6,(1-VMS)),],
-
+        if (profile_name == 'SDV'):
+            nu_co,coef_co = hapi1.absorptionCoefficient_SDVoigt(SourceTables='HITRAN2020', HITRAN_units=True,
+                                                                OmegaRange=[wn_begin,wn_end],WavenumberStep=wn_step,  
+                                                                WavenumberWing=25.,OmegaWingHW=0.0,LineMixingRosen=False,
+                                                                Environment={'T':Temp,'p':pres},
+                                                                Diluent={'self':1.00-VMS, 'air':VMS},
+                                                                File = CoefFileName)
+        elif (profile_name == 'VOIGT'):
+            nu_co,coef_co = hapi1.absorptionCoefficient_Voigt(SourceTables='HITRAN2020', HITRAN_units=True,
+                                                                OmegaRange=[wn_begin,wn_end],WavenumberStep=wn_step,  
+                                                                WavenumberWing=25.,OmegaWingHW=0.0,LineMixingRosen=False,
+                                                                Environment={'T':Temp,'p':pres},
+                                                                Diluent={'self':1.00-VMS, 'air':VMS},
+                                                                File = CoefFileName)
+        else:
+            raise ProfileNameError
+            
 
         xunc_l, xunc_u = np.zeros(len(nu_co)),np.zeros(len(nu_co))                                       
         save_xsc( CoefFileName, nu_co, coef_co, xunc_l, xunc_u  )
@@ -265,43 +258,14 @@ def CalculateXsecAS(pres, Temp, VMS,WN_range, param, Nwn, hapitable):
         
         # PROBLEM: FIX THE NAME AT UPD_HDF5 TOO!
         CoefFileName = './datafiles/%06.2fT_Id%02d_%06.4eatm_IdBroad%02d_%06.4fVMS_H2O_SDV_hitran2020.dat'%(Temp,IndexMol,pres,IndexBroad,VMS)
-        # print("named?")
-        # nu_co,coef_co = absorptionCoefficient_Voigt(SourceTables='05_HITEMP2019-full',#'07_all_iso_hit20_0k-35k',#'05_HITEMP2019',#'CO_all_HITRAN',#
-        #                                               HITRAN_units=True, OmegaRange=[wn_begin,wn_end],
-        #                                               WavenumberStep=wn_step,
-        #                                               WavenumberWing=25.0,
-        #                                               OmegaWingHW=0.0,
-        #                                               Diluent={'self':1.00-VMS, 'air':VMS},
-        #                                               Environment={'T':Temp,'p':pres},
-        #                                               File = CoefFileName)
-        # tab_name = '03_HITRAN2020'
-        # hapi1.fetch_by_ids(  tab_name, [16,17,18,19,20],   wn_begin,  wn_end,   ParameterGroups=['160-char'])
         hapi1.LOCAL_TABLE_CACHE = hapitable
-        print(hapitable.keys())
-        # nu_co,coef_co,xunc_l, xunc_u = hapi2.opacity.lbl.numba.absorptionCoefficient_Voigt(SourceTables='05_SDV_HITRAN2020',
-        #                                                                     OmegaStep = wn_step,
-        #                                                                     OmegaWing=25.0,
-        #                                                                     OmegaWingHW=0.0,
-        #                                                                     WavenumberGrid=wngrid,
-        #                                                                     Diluent={'self':1.00-VMS, 'air':VMS},
-        #                                                                     Environment={'T':Temp,'p':pres},table_itself = hapitable)
+        # print(hapitable.keys())
         nu_co,coef_co = hapi1.absorptionCoefficient_SDVoigt(SourceTables='HITRAN2020', HITRAN_units=True,
                                                             OmegaRange=[wn_begin,wn_end],WavenumberStep=wn_step,  
                                                             WavenumberWing=25.,OmegaWingHW=0.0,LineMixingRosen=False,
                                                             Environment={'T':Temp,'p':pres},
                                                             Diluent={'self':1.00-VMS, 'air':VMS},
                                                             File = CoefFileName)
-                                                            # Components=[(5,1,(1-VMS)),(5,2,(1-VMS)),(5,3,(1-VMS)),(5,4,(1-VMS)),(5,5,(1-VMS)),(5,6,(1-VMS)),],
-
-        
-
-                                                      #'05_HITEMP2019-full',#'07_all_iso_hit20_0k-35k',#'05_HITEMP2019',#'CO_all_HITRAN',#
-                                                      #HITRAN_units=True, OmegaRange=[wn_begin,wn_end],
-                                                      #WavenumberStep=wn_step,
-                                                      #WavenumberWing=25.0,
-                                                      #OmegaWingHW=0.0,
-                                                      #Diluent={'self':1.00-VMS, 'air':VMS},
-                                                      #Environment={'T':Temp,'p':pres})
         xunc_l, xunc_u = np.zeros(len(nu_co)),np.zeros(len(nu_co))                                       
         save_xsc( CoefFileName, nu_co, coef_co, xunc_l, xunc_u  )
         # print('saved?')
