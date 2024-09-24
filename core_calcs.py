@@ -52,7 +52,24 @@ def ParallelPart(pTVMS,WNs,ParametersCalculation,Nwn,Npp,Ntt,Nvms,co_hdf5,METHOD
                  [42,43,137,138],                             # SO2
                  [44,130],                                    # NO2
                  [45,46],                                     # NH3
-                 [47,117] ]                                   # HNO3
+                 [47,117],                                    # HNO3
+                 [48,49,50],                                  # OH
+                 [51,110],                                    # HF
+                 [52,53,107,108],                             # HCl
+                 [54,55,111,112],                             # HBr
+                 [56,113],                                    # HI
+                 [57,58],                                     # ClO
+                 [59,60,61,62,63,135],                        # OCS
+                 [64,65,66],                                  # H2CO
+                 [67,68],                                     # HOCl
+                 [69,118],                                    # N2
+                 [70,71,72],                                  # HCN
+                 [73,74],                                     # CH3Cl
+                 [75],                                        # H2O2
+                 [76,77,105],                                 # C2H2
+                 [78,106],                                    # C2H6
+                 [79],                                        # PH3
+                 []]
                  # To be updated!                          
 
     iso_list = iso_array[molec_id-1]
