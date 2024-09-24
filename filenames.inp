@@ -4,5 +4,5 @@ pres_test.inp
 temps_test.inp
 vms.inp
 wn.inp
-test.SDV.HITRAN2020.25wing.hdf5
+test.LP.HITRAN2020.25wing.hdf5
 MULTITHREADING

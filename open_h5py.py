@@ -10,19 +10,19 @@ import matplotlib.pyplot as plt
 
 
 
-molec_id = 6
+molec_id = 1
 
-
+HDF5filename = 'test.LP.HITRAN2020.25wing'
 
 # -*- coding: utf-8 -*-
 import h5py
-fnam = h5py.File('01.H2O.SDV.HITRAN2020.25wing.hdf5',mode='r')
+fnam = h5py.File(HDF5filename+'.hdf5',mode='r')
 for i, item in enumerate(fnam.keys()):
     print(fnam[item])
 
 # pick one cross-section 
 
-ip, it, ivms = 1,0,1
+ip, it, ivms = 1,1,1
 wn = fnam['Wavenumber'][()]
 xsec = fnam['Gas_%02d_Absorption'%molec_id][()][ip,it,ivms,:]
     
@@ -82,8 +82,11 @@ ax1.legend()
 
 #            ax2.scatter(lambda_hapi, ratio_co)
 
-name_img = "./test_hdf5.png"
+name_img = "./"+HDF5filename+"_hdf5.png"
 plt.savefig(name_img,bbox_inches='tight', transparent=False)
 plt.close()
 
 ####################################################################################################
+
+
+fnam.close()

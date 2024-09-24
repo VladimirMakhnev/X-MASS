@@ -194,15 +194,30 @@ def CalculateXsec(args):
         CoefFileName = './datafiles/%06.2fT_Id%02d_%06.4eatm_IdBroad%02d_%06.4fVMS_H2O_SDV_hitran2020.dat'%(Temp,IndexMol,pres,IndexBroad,VMS)
         hapi1.storage2cache(tab_name)
         # print(hapi1.LOCAL_TABLE_CACHE.keys())
-        if (profile_name == 'SDV'):
+        if (profile_name == 'HT'):
+            nu_co,coef_co = hapi1.absorptionCoefficient_HT(SourceTables='HITRAN2020', HITRAN_units=True,
+                                                                OmegaRange=[wn_begin,wn_end],WavenumberStep=wn_step,  
+                                                                WavenumberWing=25.,OmegaWingHW=0.0,LineMixingRosen=False,
+                                                                Environment={'T':Temp,'p':pres},
+                                                                Diluent={'self':1.00-VMS, 'air':VMS},
+                                                                File = CoefFileName)
+            
+        elif (profile_name == 'SDVoigt'):
             nu_co,coef_co = hapi1.absorptionCoefficient_SDVoigt(SourceTables='HITRAN2020', HITRAN_units=True,
                                                                 OmegaRange=[wn_begin,wn_end],WavenumberStep=wn_step,  
                                                                 WavenumberWing=25.,OmegaWingHW=0.0,LineMixingRosen=False,
                                                                 Environment={'T':Temp,'p':pres},
                                                                 Diluent={'self':1.00-VMS, 'air':VMS},
                                                                 File = CoefFileName)
-        elif (profile_name == 'VOIGT'):
+        elif (profile_name == 'Voigt'):
             nu_co,coef_co = hapi1.absorptionCoefficient_Voigt(SourceTables='HITRAN2020', HITRAN_units=True,
+                                                                OmegaRange=[wn_begin,wn_end],WavenumberStep=wn_step,  
+                                                                WavenumberWing=25.,OmegaWingHW=0.0,LineMixingRosen=False,
+                                                                Environment={'T':Temp,'p':pres},
+                                                                Diluent={'self':1.00-VMS, 'air':VMS},
+                                                                File = CoefFileName)
+        elif (profile_name == 'Lorentz'):
+            nu_co,coef_co = hapi1.absorptionCoefficient_Lorentz(SourceTables='HITRAN2020', HITRAN_units=True,
                                                                 OmegaRange=[wn_begin,wn_end],WavenumberStep=wn_step,  
                                                                 WavenumberWing=25.,OmegaWingHW=0.0,LineMixingRosen=False,
                                                                 Environment={'T':Temp,'p':pres},
@@ -227,15 +242,17 @@ def CalculateXsec(args):
 @background
 def CalculateXsecAS(pres, Temp, VMS,WN_range, param, Nwn, hapitable):
     
-    print('Calculate xsec, hapitable')
+    # print('Calculate xsec, hapitable')
     class NaNError(Exception):
         'Corrupted p, T or VMS value'
+        pass
+    class ProfileNameError(Exception):
+        'Corrupted profile name'
         pass
     
     try:
         if ((pres!=pres) or (Temp!=Temp) or (VMS!=VMS)):
             raise NaNError
-        # print('entered?')
         
         wn_begin = float(param[3][1])
         wn_end = float(param[4][1])
