@@ -1,8 +1,8 @@
 x-mass.py
 params.inp
-pres_pRT.inp
-temps_pRT.inp
+pres_test.inp
+temps_test.inp
 vms.inp
 wn.inp
-01.H2O.SDV.HITRAN2020.25wing.hdf5
-PLAIN
+test.SDV.HITRAN2020.25wing.hdf5
+MULTITHREADING
