@@ -69,8 +69,10 @@ The next lines are:
 | **Line**                              | **Description**                    |
 |---------------------------------------|------------------------------------|
 | **Wavenumber**                        | a number of grid points            |
+|                                       |                                    |
 | **Number_cores**                      | amount of computer cores allocated |
 |                                       | for calculations (MULTITHREADING)  |
+|                                       |                                    |
 | **Profile**                           | a line profile used in calculations|
 |                                       |                                    |
 | **Profile_group**                     | a line profile parameter group     |
