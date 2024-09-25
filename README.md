@@ -34,12 +34,11 @@ cd x-mass
 
 ## How to use 
 
-Prepare input files at the directory with scripts.
-Launch the main.py script:
+1. Download the package into the working folder.
+	N.B.: Beware of lack of free space on the drive!
+	N.B.: All input files should be in the working directory!
 
-`python main.py `
-
-where **filenames.inp** contains info about all other files and method of calculation: 
+2. Setup the **filenames.inp** which contains info about all other files and method of calculation: 
 
 | **File**                              | **Description**                    |
 |---------------------------------------|------------------------------------|
@@ -62,10 +61,32 @@ where **filenames.inp** contains info about all other files and method of calcul
 **MULTITHREADING** -- the ```multiprocessing``` calculation.
 
 
-## Params file content
+3. Setup the **params.inp** which contains info about details of calculations. 
+The first 16 lines of **params.inp** file are consistent with ABSCO table:
+ [manual](https://docserver.gesdisc.eosdis.nasa.gov/public/project/OCO/ABSCO_UsersGuide_20170724_corr2_v5.0.pdf). 
+The next lines are:
 
-The configuration of **params.inp** file is consistent with ABSCO table [manual](https://docserver.gesdisc.eosdis.nasa.gov/public/project/OCO/ABSCO_UsersGuide_20170724_corr2_v5.0.pdf). 
-First 11 lines correspond to the attributes from the manual, while next line describes: 
+| **Line**                              | **Description**                    |
+|---------------------------------------|------------------------------------|
+| **Wavenumber**                        | a number of grid points            |
+| **Number_cores**                      | amount of computer cores allocated |
+|                                       | for calculations (MULTITHREADING)  |
+| **Profile**                           | a line profile used in calculations|
+|                                       |                                    |
+| **Profile_group**                     | a line profile parameter group     |
+
+4. Prepare **pres_pRT.inp** pressure input file.
+
+0. Launch the main.py script:
+
+`python main.py `
+
+## Credits
+
+If you use X-MASS in your research or software development, please cite it using the following reference:
+V.Yu. Makhnev, I.E. Gordon, L.S. Rothman, R.J. Hargreaves (in prep.)
+
+
 
 
 

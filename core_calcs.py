@@ -153,7 +153,7 @@ def save_xsc( filename, vals_nu, vals_abs  , vals_unc_l, vals_unc_u):
 # calculate x-sec for exact P, T, VMS of exact molecule
 def CalculateXsec(args):
     pres, Temp, VMS, WN_range, param, Nwn, tab_name = args
-    print('Calculate xsec, hapitable')
+    # print('Calculate xsec, hapitable')
     class NaNError(Exception):
         'Corrupted p, T or VMS value'
         pass
@@ -171,7 +171,7 @@ def CalculateXsec(args):
         wn_step = (wn_end-wn_begin)/(Nwn-1)
         
         profile_name = param[18][1]
-        print(profile_name)
+        # print(profile_name)
 
         # print('%25.22f'%wn_step)
         # print('core_calcs: wn_len', param[3][1],param[4][1])

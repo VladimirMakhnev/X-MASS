@@ -2,7 +2,7 @@ import numpy as np
 import sys
 
 # FLAGS
-FLAG_DEBUG_PRINT = True
+FLAG_DEBUG_PRINT = False
 
 
 
