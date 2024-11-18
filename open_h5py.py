@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 
 
 
-molec_id = 1
+molec_id = 2
 
 HDF5filename = 'test.LP.HITRAN2020.25wing'
 
@@ -23,9 +23,12 @@ for i, item in enumerate(fnam.keys()):
 # pick one cross-section 
 
 ip, it, ivms = 1,1,1
-wn = fnam['Wavenumber'][()]
-xsec = fnam['Gas_%02d_Absorption'%molec_id][()][ip,it,ivms,:]
-    
+for ip in np.arange(2):
+    for it in np.arange(2):
+        for ivms in np.arange(3):
+            wn = fnam['Wavenumber'][()]
+            xsec = fnam['Gas_%02d_Absorption'%molec_id][()][ip,it,ivms,:]
+            print(xsec[xsec<0])
 
 # print chosen x-sec
 print(wn)

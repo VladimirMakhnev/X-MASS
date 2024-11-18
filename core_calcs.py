@@ -42,7 +42,7 @@ def ParallelPart(pTVMS,WNs,ParametersCalculation,Nwn,Npp,Ntt,Nvms,co_hdf5,METHOD
     par_group = [par_group]  
     
     iso_array = [[1,2,3,4,5,6,129],                           # H2O
-                 [7,8,9,10,11,12,13,14,15,120,121,122],       # CO2
+                 [7,8,9,10,11,12,13,14,15],#,120,121,122],       # CO2
                  [16,17,18,19,20],                            # O3
                  [21,22,23,24,25],                            # N2O
                  [26,27,28,29,30,31],                         # CO
@@ -125,6 +125,8 @@ def ParallelPart(pTVMS,WNs,ParametersCalculation,Nwn,Npp,Ntt,Nvms,co_hdf5,METHOD
                 t_myarg = (p, T, VMS, WNs, ParametersCalculation, Nwn, tab_name)
 
                 myargs.append(t_myarg)
+            # for item in myargs: 
+            #     print('   ',item)
             pool = Pool(N_threads)
             results = pool.map(CalculateXsec, myargs)
         except InvalidCoreCount:
