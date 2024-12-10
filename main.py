@@ -5,9 +5,12 @@ import initial
 import hdf5_io
 import core_calcs
 
+import winsound
+
 # TO RECORD OUTPUT INTO THE FILE -- TRUE
 # TO KEEP IT IN THE CONSOLE      -- FALSE
-FLAG_LOG_FILE = False
+FLAG_LOG_FILE = True
+FLAG_PROFILER = True
 
 if __name__ == "__main__":
     
@@ -16,6 +19,9 @@ if __name__ == "__main__":
     fLog = open('output.log', 'w')
     fLog.close()
     if (FLAG_LOG_FILE):
+        import cProfile
+        import pstats
+
         orig_stdout = sys.stdout
         fLog = open('output.log', 'a')
         sys.stdout = fLog
@@ -76,6 +82,9 @@ if __name__ == "__main__":
     
     print("Timer started")
     t_begin = time.time()
+    profiler = cProfile.Profile()
+    if (FLAG_PROFILER):
+        profiler.enable()
     
     print("***********************************************")
     print("*** PARAMETERS HANDLING ***********************")
@@ -129,10 +138,9 @@ if __name__ == "__main__":
     print("***********************************************")
     print("*** CALCULATIONS PART *************************")
     print("***********************************************")
-
+    
     # Calculation part
     co_hdf5 = core_calcs.ParallelPart(pTVMS,WNs,ParametersCalculation,Nwn,Npp,Ntt,Nvms,co_hdf5,METHOD)
-
     # Populating the HDF5 file by x-sections
     co_hdf5 = hdf5_io.UpdateHDF5(co_hdf5, pTVMS, ipTVMS, ParametersCalculation)
   
@@ -152,9 +160,24 @@ if __name__ == "__main__":
     # Closing the HDF5 file
     hdf5_io.CloseHDF5(co_hdf5)
     
+    if (FLAG_PROFILER): 
+        profiler.disable()  
+        # Save profiling results to a file
+        profiler.dump_stats("profiling_results.prof")
+    
+        # Load profiling results
+        stats = pstats.Stats("profiling_results.prof")
+    
+        # Sort by cumulative time (default)
+        print("Sorted by cumulative time:")
+        stats.sort_stats("cumulative").print_stats()
+
     t_end = time.time()
     print('Time taken: %d seconds'%(t_end-t_begin))
-    
+    winsound.Beep(261, 400)
+    winsound.Beep(329, 400)
+    winsound.Beep(392 , 400)
+    winsound.Beep(523, 700)
     print('\nDone.')
 
     # Recording the output into the file

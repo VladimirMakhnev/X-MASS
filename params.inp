@@ -1,20 +1,20 @@
 version:12.09.24
 addl_ident:
-gas_name:H2O
-wn_begin:3500.0
-wn_end:4000.0
-comment:H2O 
-Gas_Q_abs_Absorbtion:H2O
+gas_name:CO2
+wn_begin:2500.0
+wn_end:3000.0
+comment:CO2 
+Gas_Q_abs_Absorbtion:CO2
 addl_ident:None
-gas_name:H2O
-comment:H2O pRT
-Gas_index:01
+gas_name:CO2
+comment:CO2 pRT
+Gas_index:02
 Pressure:2
 Temperature:2
 Broadener_Q_brd_VMR:00
 broadener_name:air
 Broadener_Index:00
-Wavenumber:5001
+Wavenumber:2000001
 Number_cores:7
-Profile:Lorentz
+Profile:SDVoigt
 Profile_group:160-char

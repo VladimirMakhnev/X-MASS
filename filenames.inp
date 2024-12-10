@@ -5,4 +5,4 @@ temps_test.inp
 vms.inp
 wn.inp
 test.LP.HITRAN2020.25wing.hdf5
-MULTITHREADING
+PLAIN
