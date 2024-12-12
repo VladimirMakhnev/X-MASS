@@ -31,7 +31,7 @@ if __name__ == "__main__":
     #############################################################
     ### BEGIN OF MAIN PART ######################################
     #############################################################
-    XMASSSEC_VERSION = '0.8'; __version__ = XMASSSEC_VERSION
+    XMASSSEC_VERSION = '0.8.1'; __version__ = XMASSSEC_VERSION
     XMASSSEC_HISTORY = [
     'INITIATION OF INPUT FILE WITH PARAMETERS 31.01.23 (ver. 0.1)',
     'CREATION OF HDF5 FILE + SOME EXCEPTIONS HANDLING (ver. 0.2)',
@@ -48,7 +48,8 @@ if __name__ == "__main__":
     'A NEW STRUCTURE FOR HYDRA USES (ver. 0.5)',
     'MULTIPLE PARALLEL OPTIONS (ver. 0.6)',
     'COMMENTS AND STYLE (ver. 0.7)',
-    'NEW INPUT FILE, PROFILE PICK (ver. 0.8)'
+    'NEW INPUT FILE, PROFILE PICK (ver. 0.8)',
+    'TIME PROFILER (ver. 0.8.1)'
     ]
     
     # version header

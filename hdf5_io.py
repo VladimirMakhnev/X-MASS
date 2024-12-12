@@ -103,6 +103,7 @@ def UpdateHDF5(ftype, pTVMS, ipTVMS, param):
     Index_abs = '%02d'%(int(ftype['Gas_Index'][()]))
     dataset_name = 'Gas_'+Index_abs+'_Absorption'
 
+    set_abs = ftype[dataset_name][()]
     for i, tptvms in enumerate(pTVMS):
         tp, tt, tv = tptvms[0], tptvms[1], tptvms[2]
         print('Opening %d file out of %d'%(i,len(pTVMS)))
@@ -111,11 +112,10 @@ def UpdateHDF5(ftype, pTVMS, ipTVMS, param):
         coeff = ((np.loadtxt(CoefFileName)).T)[1]
 
 
-        set_abs = ftype[dataset_name][()]
         set_abs[ipTVMS[i][0][0]][ipTVMS[i][1][0]][ipTVMS[i][2][0]][:] = coeff
-        ftype[dataset_name][()] = set_abs
-
         coeff = []    
+    ftype[dataset_name][()] = set_abs
+
     
 
     return ftype

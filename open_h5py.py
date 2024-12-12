@@ -1,5 +1,5 @@
 print("\n*****\nSupplementary tool to X-MASS.\nABSCO-table-formatted file opener.\n*****\n")
-print("V.Yu. Makhnev, 16 of Sept 2024\n")
+print("V.Yu. Makhnev, 12 of Dec 2024\n")
 
 # TESTING TOOL TO CHECK IF HDF5 FILE IS NOT EMPTY
 import numpy as np
@@ -22,21 +22,30 @@ for i, item in enumerate(fnam.keys()):
 
 # pick one cross-section 
 
-ip, it, ivms = 1,1,1
-for ip in np.arange(2):
-    for it in np.arange(2):
-        for ivms in np.arange(3):
-            wn = fnam['Wavenumber'][()]
-            xsec = fnam['Gas_%02d_Absorption'%molec_id][()][ip,it,ivms,:]
-            print(xsec[xsec<0])
+# for ip in np.arange(10):
+#     for it in np.arange(13):
+#         for ivms in np.arange(3):
+#             wn = fnam['Wavenumber'][()]
+#             xsec = fnam['Gas_%02d_Absorption'%molec_id][()][ip,it,ivms,:]
+#             print(len(xsec[xsec>0]))
 
 # print chosen x-sec
-print(wn)
-print(xsec)
+ip, it, ivms = 1,2,1
 
-p = fnam['Pressure'][()][ip]
-T = fnam['Temperature'][()][ip,it]
+
+wn = fnam['Wavenumber'][()]
+xsec1 = fnam['Gas_%02d_Absorption'%molec_id][()][ip,it,ivms,:]
+xsec2 = fnam['Gas_%02d_Absorption'%molec_id][()][ip+1,it,ivms,:]
+xsec3 = fnam['Gas_%02d_Absorption'%molec_id][()][ip,it+1,ivms,:]
+# print(wn)
+# print(xsec)
+p1 = fnam['Pressure'][()][ip]
+T1 = fnam['Temperature'][()][ip,it]
 vms = fnam['Broadener_00_VMS'][()][ivms]
+p2 = fnam['Pressure'][()][ip+1]
+T2 = fnam['Temperature'][()][ip+1,it]
+p3 = fnam['Pressure'][()][ip]
+T3 = fnam['Temperature'][()][ip,it+1]
 
 
 
@@ -48,8 +57,8 @@ vms = fnam['Broadener_00_VMS'][()][ivms]
 nu_start =      fnam['Wavenumber'][()][0]
 nu_end   =      fnam['Wavenumber'][()][-1]
 
-y_start = min(xsec)
-y_end   =  max(xsec)
+y_start = min(xsec1)
+y_end   =  max(xsec1)
 
 
 figure1 = plt.figure(figsize=(16,8),dpi=500)
@@ -67,9 +76,11 @@ ax1.set_xlabel(r'$cm^{-1}$')
 
 ax1.set_title(title_band, y=1.05)
 # ax1.set_xscale('log')
-# ax1.set_yscale('log')
+ax1.set_yscale('log')
 
-ax1.plot(wn,xsec,label='Cross-section of H$_2$O, p=%4.2f bar, T=%4.2f K, VMS=%4.2f'%(p,T,vms))
+ax1.plot(wn,xsec1,label='Cross-section of H$_2$O, p=%4.2e bar, T=%4.2f K, VMS=%4.2f'%(p1,T1,vms),alpha=0.5)
+ax1.plot(wn,xsec2,label='Cross-section of H$_2$O, p=%4.2e bar, T=%4.2f K, VMS=%4.2f'%(p2,T2,vms),alpha=0.5)
+ax1.plot(wn,xsec3,label='Cross-section of H$_2$O, p=%4.2e bar, T=%4.2f K, VMS=%4.2f'%(p3,T3,vms),alpha=0.5)
 # ax1.scatter(oldllm['S'],(oldllm['S']-newllm['S'])/newllm['S']*100, label='Old/New-1 *100\%',s=4.0,marker='x',color=(0.9,0.1,0.1))
 # ax1.scatter(, s=5.0,marker='+', color=(0.1,0.9,0.1), label='pRT grid')
 # ax1.plot(lambda_pRT,co_hapi_int,label='Interpolated',alpha=0.5)
