@@ -32,9 +32,8 @@ WING_WN = 25.
 
 # Extra margin (cm-1) added to the HITRAN fetch range so that lines centered
 # just outside [wn_begin, wn_end] still contribute their wings to the edge
-# points of the output grid. Kept at 0 until the Stage-1 A/B regression is
-# done; the physically correct value is WING_WN.
-FETCH_MARGIN = 0.
+# points of the output grid.
+FETCH_MARGIN = WING_WN
 
 # per-process worker state, populated once by _init_worker
 WORKER = {}
