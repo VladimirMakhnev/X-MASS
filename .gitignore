@@ -1,0 +1,6 @@
+venv/
+__pycache__/
+test_run*/
+datafiles/
+*.prof
+*.pyc

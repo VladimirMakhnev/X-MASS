@@ -152,8 +152,11 @@ def ParallelPart(pTVMS,WNs,ParametersCalculation,Nwn,Npp,Ntt,Nvms,co_hdf5,METHOD
             raise
 
     hapitable = hapi1.LOCAL_TABLE_CACHE
-    
-    hapi1.cache2storage(tab_name)
+
+    # NOTE: do not call hapi1.cache2storage() here: fetch_by_ids() has already
+    # persisted the table, and cache2storage() in HAPI <= 1.3.0.0 rewrites the
+    # header dropping the 'extra' column info (e.g. the line-mixing parameters),
+    # which breaks storage2cache() in the worker processes.
     
     if ('datafiles' not in os.listdir('./')):
         os.mkdir('datafiles')
