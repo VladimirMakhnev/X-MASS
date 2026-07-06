@@ -1,0 +1,23 @@
+version:12.09.24
+addl_ident:
+gas_name:CO
+wn_begin:2000.0
+wn_end:2200.0
+comment:CO quickstart example
+Gas_Q_abs_Absorbtion:CO
+addl_ident:None
+gas_name:CO
+comment:CO fundamental band, quickstart example
+Gas_index:05
+Pressure:2
+Temperature:2
+Broadener_Q_brd_VMR:00
+broadener_name:air
+Broadener_Index:00
+Wavenumber:2001
+Number_cores:4
+Profile:SDVoigt
+Profile_group:160-char
+Line_mixing:ON
+Remove_pedestal:OFF
+Keep_dat:OFF

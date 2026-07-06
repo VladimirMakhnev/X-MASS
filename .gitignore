@@ -4,3 +4,9 @@ test_run*/
 datafiles/
 *.prof
 *.pyc
+HITRAN2020.data
+HITRAN2020.header
+output.log
+profiling_results.*
+examples/**/*.hdf5
+examples/**/*.png

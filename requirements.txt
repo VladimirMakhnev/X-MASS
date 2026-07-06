@@ -1,0 +1,7 @@
+# X-MASS runtime dependencies (Python >= 3.8)
+numpy
+h5py
+matplotlib
+nest_asyncio
+# HITRAN Application Programming Interface; tested with HAPI 1.3.0.0
+hitran-api>=1.2
