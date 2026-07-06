@@ -29,6 +29,59 @@ def background(f):
 
     return wrapped
 
+# Absolute line-wing cutoff (cm-1). The value of 25 cm-1 follows the Earth
+# remote-sensing convention and matches the "local line shape" definition of
+# the MT_CKD continuum model (Mlawer et al., JQSRT 306, 108645, 2023).
+WING_WN = 25.
+
+# reads an optional ON/OFF switch from the params.inp lines (OFF when absent)
+def readSwitch(param, index):
+    return (len(param) > index) and (len(param[index]) > 1) and \
+           (param[index][1].strip().upper() in ('ON', 'TRUE', 'YES', '1'))
+
+# Lorentz pedestal ("plinth") spectrum: for every line, the value of its
+# Lorentz profile at +/-wing from the (pressure-shifted) line center, spread
+# as a constant over the truncation window. Subtracting it from the truncated
+# cross-section yields the local-line contribution required for consistency
+# with the MT_CKD continuum without double-counting of absorption.
+def PedestalSpectrum(wn_grid, tab_name, Temp, pres, diluent, wing):
+    data = hapi1.LOCAL_TABLE_CACHE[tab_name]['data']
+    nu = np.array(data['nu'], dtype=float)
+    sw = np.array(data['sw'], dtype=float)
+    elower = np.array(data['elower'], dtype=float)
+    gamma_air = np.array(data['gamma_air'], dtype=float)
+    gamma_self = np.array(data['gamma_self'], dtype=float)
+    n_air = np.array(data['n_air'], dtype=float)
+    delta_air = np.array(data['delta_air'], dtype=float)
+    mols = np.array(data['molec_id'], dtype=int)
+    isos = np.array(data['local_iso_id'], dtype=int)
+
+    Tref = 296.
+    # line intensities at Temp (TIPS partition sums per isotopologue)
+    S = np.zeros(len(nu))
+    for (tmol, tiso) in set(zip(mols.tolist(), isos.tolist())):
+        mask = (mols == tmol) & (isos == tiso)
+        SigmaT = hapi1.partitionSum(tmol, tiso, Temp)
+        SigmaTref = hapi1.partitionSum(tmol, tiso, Tref)
+        S[mask] = hapi1.EnvironmentDependency_Intensity(sw[mask], Temp, Tref,
+                                                        SigmaT, SigmaTref,
+                                                        elower[mask], nu[mask])
+
+    # Lorentz HWHM of the diluent mixture (n_air temperature exponent for both
+    # air and self, consistently with the 160-char HITRAN record)
+    gammaL = pres*((Tref/Temp)**n_air)*(diluent.get('air', 0.)*gamma_air
+                                        + diluent.get('self', 0.)*gamma_self)
+    nu0 = nu + delta_air*pres
+    height = S*gammaL/(np.pi*(gammaL*gammaL + wing*wing))
+
+    # accumulate the constant pedestals via a difference array
+    pedestal = np.zeros(len(wn_grid) + 1)
+    i_lo = np.searchsorted(wn_grid, nu0 - wing, side='left')
+    i_hi = np.searchsorted(wn_grid, nu0 + wing, side='right')
+    np.add.at(pedestal, i_lo, height)
+    np.add.at(pedestal, i_hi, -height)
+    return np.cumsum(pedestal[:-1])
+
 
     
 def ParallelPart(pTVMS,WNs,ParametersCalculation,Nwn,Npp,Ntt,Nvms,co_hdf5,METHOD):
@@ -77,13 +130,26 @@ def ParallelPart(pTVMS,WNs,ParametersCalculation,Nwn,Npp,Ntt,Nvms,co_hdf5,METHOD
 
 
 
+    FLAG_LINE_MIXING = readSwitch(ParametersCalculation, 20)
+
     print('*** CORE_CALCS ***')
     print(molec_id, par_group,iso_list)
+    print('Line mixing (1st-order Rosenkranz): %s'%('ON' if FLAG_LINE_MIXING else 'OFF'))
 
     tab_name = 'HITRAN2020'
-    
-    
-    hapi1.fetch_by_ids(  tab_name, iso_list,   wn_begin,  wn_end,   ParameterGroups=par_group)
+
+    fetch_groups = list(par_group)
+    if (FLAG_LINE_MIXING):
+        # line-mixing parameters, where HITRAN provides them
+        fetch_groups += ['voigt_linemixing', 'sdvoigt_linemixing']
+    try:
+        hapi1.fetch_by_ids(  tab_name, iso_list,   wn_begin,  wn_end,   ParameterGroups=fetch_groups)
+    except Exception as err:
+        if (FLAG_LINE_MIXING):
+            print('WARNING: fetch with line-mixing groups failed (%s), refetching without them'%(err))
+            hapi1.fetch_by_ids(  tab_name, iso_list,   wn_begin,  wn_end,   ParameterGroups=par_group)
+        else:
+            raise
 
     hapitable = hapi1.LOCAL_TABLE_CACHE
     
@@ -175,6 +241,10 @@ def CalculateXsec(args):
         profile_name = param[18][1]
         # print(profile_name)
 
+        FLAG_LINE_MIXING = readSwitch(param, 20)
+        FLAG_REMOVE_PEDESTAL = readSwitch(param, 21)
+        diluent = {'self':1.00-VMS, 'air':VMS}
+
         # print('%25.22f'%wn_step)
         # print('core_calcs: wn_len', param[3][1],param[4][1])
         # print('core_calcs: wn_step',wn_step)
@@ -198,38 +268,40 @@ def CalculateXsec(args):
         # print(hapi1.LOCAL_TABLE_CACHE.keys())
         if (profile_name == 'HT'):
             nu_co,coef_co = hapi1.absorptionCoefficient_HT(SourceTables='HITRAN2020', HITRAN_units=True,
-                                                                OmegaRange=[wn_begin,wn_end],WavenumberStep=wn_step,  
-                                                                WavenumberWing=25.,OmegaWingHW=0.0,LineMixingRosen=False,
+                                                                OmegaRange=[wn_begin,wn_end],WavenumberStep=wn_step,
+                                                                WavenumberWing=WING_WN,OmegaWingHW=0.0,LineMixingRosen=False,
                                                                 Environment={'T':Temp,'p':pres},
-                                                                Diluent={'self':1.00-VMS, 'air':VMS},
+                                                                Diluent=diluent,
                                                                 File = CoefFileName)
-            
+
         elif (profile_name == 'SDVoigt'):
             nu_co,coef_co = hapi1.absorptionCoefficient_SDVoigt(SourceTables='HITRAN2020', HITRAN_units=True,
-                                                                OmegaRange=[wn_begin,wn_end],WavenumberStep=wn_step,  
-                                                                WavenumberWing=25.,OmegaWingHW=0.0,LineMixingRosen=False,
+                                                                OmegaRange=[wn_begin,wn_end],WavenumberStep=wn_step,
+                                                                WavenumberWing=WING_WN,OmegaWingHW=0.0,LineMixingRosen=FLAG_LINE_MIXING,
                                                                 Environment={'T':Temp,'p':pres},
-                                                                Diluent={'self':1.00-VMS, 'air':VMS},
+                                                                Diluent=diluent,
                                                                 File = CoefFileName)
         elif (profile_name == 'Voigt'):
             nu_co,coef_co = hapi1.absorptionCoefficient_Voigt(SourceTables='HITRAN2020', HITRAN_units=True,
-                                                                OmegaRange=[wn_begin,wn_end],WavenumberStep=wn_step,  
-                                                                WavenumberWing=25.,OmegaWingHW=0.0,LineMixingRosen=False,
+                                                                OmegaRange=[wn_begin,wn_end],WavenumberStep=wn_step,
+                                                                WavenumberWing=WING_WN,OmegaWingHW=0.0,LineMixingRosen=FLAG_LINE_MIXING,
                                                                 Environment={'T':Temp,'p':pres},
-                                                                Diluent={'self':1.00-VMS, 'air':VMS},
+                                                                Diluent=diluent,
                                                                 File = CoefFileName)
         elif (profile_name == 'Lorentz'):
             nu_co,coef_co = hapi1.absorptionCoefficient_Lorentz(SourceTables='HITRAN2020', HITRAN_units=True,
-                                                                OmegaRange=[wn_begin,wn_end],WavenumberStep=wn_step,  
-                                                                WavenumberWing=25.,OmegaWingHW=0.0,LineMixingRosen=False,
+                                                                OmegaRange=[wn_begin,wn_end],WavenumberStep=wn_step,
+                                                                WavenumberWing=WING_WN,OmegaWingHW=0.0,LineMixingRosen=False,
                                                                 Environment={'T':Temp,'p':pres},
-                                                                Diluent={'self':1.00-VMS, 'air':VMS},
+                                                                Diluent=diluent,
                                                                 File = CoefFileName)
         else:
             raise ProfileNameError
-            
 
-        xunc_l, xunc_u = np.zeros(len(nu_co)),np.zeros(len(nu_co))                                       
+        if (FLAG_REMOVE_PEDESTAL):
+            coef_co = coef_co - PedestalSpectrum(nu_co, tab_name, Temp, pres, diluent, WING_WN)
+
+        xunc_l, xunc_u = np.zeros(len(nu_co)),np.zeros(len(nu_co))
         save_xsc( CoefFileName, nu_co, coef_co, xunc_l, xunc_u  )
         # print('saved?')
         return
@@ -275,17 +347,23 @@ def CalculateXsecAS(pres, Temp, VMS,WN_range, param, Nwn, hapitable):
         IndexBroad = int(param[15][1])
         
         
+        FLAG_LINE_MIXING = readSwitch(param, 20)
+        FLAG_REMOVE_PEDESTAL = readSwitch(param, 21)
+        diluent = {'self':1.00-VMS, 'air':VMS}
+
         # PROBLEM: FIX THE NAME AT UPD_HDF5 TOO!
         CoefFileName = './datafiles/%06.2fT_Id%02d_%06.4eatm_IdBroad%02d_%06.4fVMS_H2O_SDV_hitran2020.dat'%(Temp,IndexMol,pres,IndexBroad,VMS)
         hapi1.LOCAL_TABLE_CACHE = hapitable
         # print(hapitable.keys())
         nu_co,coef_co = hapi1.absorptionCoefficient_SDVoigt(SourceTables='HITRAN2020', HITRAN_units=True,
-                                                            OmegaRange=[wn_begin,wn_end],WavenumberStep=wn_step,  
-                                                            WavenumberWing=25.,OmegaWingHW=0.0,LineMixingRosen=False,
+                                                            OmegaRange=[wn_begin,wn_end],WavenumberStep=wn_step,
+                                                            WavenumberWing=WING_WN,OmegaWingHW=0.0,LineMixingRosen=FLAG_LINE_MIXING,
                                                             Environment={'T':Temp,'p':pres},
-                                                            Diluent={'self':1.00-VMS, 'air':VMS},
+                                                            Diluent=diluent,
                                                             File = CoefFileName)
-        xunc_l, xunc_u = np.zeros(len(nu_co)),np.zeros(len(nu_co))                                       
+        if (FLAG_REMOVE_PEDESTAL):
+            coef_co = coef_co - PedestalSpectrum(nu_co, 'HITRAN2020', Temp, pres, diluent, WING_WN)
+        xunc_l, xunc_u = np.zeros(len(nu_co)),np.zeros(len(nu_co))
         save_xsc( CoefFileName, nu_co, coef_co, xunc_l, xunc_u  )
         # print('saved?')
         return

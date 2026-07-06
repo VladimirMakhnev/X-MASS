@@ -2,7 +2,7 @@
 
 ## Introduction
 
-A Python tool (**X-MASS**) that allows the massive set of ABSCO tables to be calculated using the HAPI software packagee with complete utilization of the parameters’ accuracy in HITRAN, including sophisticated line shapes
+A Python tool (**X-MASS**) that allows the massive set of ABSCO tables to be calculated using the HAPI software package, making full use of the line-shape parameters provided in HITRAN — including the speed-dependent Voigt and Hartmann-Tran profiles and first-order (Rosenkranz) line mixing, wherever these parameters are available in the database (Voigt is used for the remaining lines)
 
 ## Features
 
@@ -76,6 +76,12 @@ The next lines are:
 |                                       | for calculations (MULTITHREADING)  |
 | **Profile**                           | a line profile used in calculations|
 | **Profile_group**                     | a line profile parameter group     |
+| **Line_mixing**                       | ON/OFF: first-order (Rosenkranz)   |
+|                                       | line mixing for Voigt/SDVoigt,     |
+|                                       | where HITRAN provides parameters   |
+| **Remove_pedestal**                   | ON/OFF: subtract the 25 cm-1       |
+|                                       | Lorentz pedestal (plinth) for      |
+|                                       | MT_CKD-consistent tables           |
 
 4. Prepare **pres_pRT.inp** pressure input file -- a column of N_p pressures.
 

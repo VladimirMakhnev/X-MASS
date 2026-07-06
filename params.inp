@@ -18,3 +18,5 @@ Wavenumber:20001
 Number_cores:7
 Profile:SDVoigt
 Profile_group:160-char
+Line_mixing:ON
+Remove_pedestal:OFF
