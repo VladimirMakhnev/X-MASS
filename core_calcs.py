@@ -1,4 +1,4 @@
-from initial import FLAG_DEBUG_PRINT
+from initial import FLAG_DEBUG_PRINT, readSwitchByName
 
 import numpy as np
 
@@ -9,6 +9,7 @@ import hapi as hapi1
 
 import sys
 import os
+import traceback
 
 
 from multiprocessing import Pool
@@ -29,10 +30,62 @@ def background(f):
 # the MT_CKD continuum model (Mlawer et al., JQSRT 306, 108645, 2023).
 WING_WN = 25.
 
-# reads an optional ON/OFF switch from the params.inp lines (OFF when absent)
-def readSwitch(param, index):
-    return (len(param) > index) and (len(param[index]) > 1) and \
-           (param[index][1].strip().upper() in ('ON', 'TRUE', 'YES', '1'))
+# Extra margin (cm-1) added to the HITRAN fetch range so that lines centered
+# just outside [wn_begin, wn_end] still contribute their wings to the edge
+# points of the output grid. Kept at 0 until the Stage-1 A/B regression is
+# done; the physically correct value is WING_WN.
+FETCH_MARGIN = 0.
+
+# per-process worker state, populated once by _init_worker
+WORKER = {}
+
+def _init_worker(tab_name, param, Nwn, flags):
+    """Pool initializer: make the line list available in this process ONCE.
+
+    On fork platforms (Linux) the table is usually inherited from the parent
+    and the disk re-parse is skipped; on spawn platforms (Windows) each worker
+    parses the storage files a single time. Never raises: a raising
+    initializer would make multiprocessing respawn workers in a loop, so
+    errors are stored and reported by every task instead."""
+    try:
+        if (tab_name not in hapi1.LOCAL_TABLE_CACHE):
+            hapi1.storage2cache(tab_name)
+        wn_begin = float(param[3][1])
+        wn_end = float(param[4][1])
+        WORKER.update(tab_name=tab_name, param=param, Nwn=Nwn, flags=flags,
+                      wngrid=np.linspace(wn_begin, wn_end, Nwn),
+                      init_error=None)
+    except Exception:
+        WORKER['init_error'] = traceback.format_exc()
+
+# single source of truth for the per-point text-file name (the historical
+# pattern is kept verbatim so existing tooling can still glob for it)
+def dat_filename(param, pres, Temp, VMS):
+    IndexMol = int(param[10][1])
+    IndexBroad = int(param[15][1])
+    return './datafiles/%06.2fT_Id%02d_%06.4eatm_IdBroad%02d_%06.4fVMS_H2O_SDV_hitran2020.dat'%(Temp,IndexMol,pres,IndexBroad,VMS)
+
+def _consume_results(results_iter, ds_coef, hdf5file, Nwn, n_total):
+    """Write each finished (ip,it,iv) slice into the HDF5 dataset as results
+    arrive, so parent memory stays at one slice regardless of grid size.
+    Failed points are left at the dataset fill value (NaN).
+    Returns the list of failures [(ip, it, iv, error_text), ...]."""
+    failures = []
+    n_done = 0
+    for (ip, it, iv, coef, err) in results_iter:
+        n_done += 1
+        if (err is None) and (coef is not None) and (coef.shape == (Nwn,)):
+            ds_coef[ip, it, iv, :] = coef
+        else:
+            if (err is None):
+                err = 'bad result shape: %s'%(str(getattr(coef, 'shape', None)))
+            failures.append((ip, it, iv, err))
+            print('FAILED point (ip=%d, it=%d, iv=%d):\n%s'%(ip, it, iv, err))
+        if (n_done % 16 == 0):
+            hdf5file.flush()
+        print('Progress: %d/%d points done'%(n_done, n_total))
+    hdf5file.flush()
+    return failures
 
 # Lorentz pedestal ("plinth") spectrum: for every line, the value of its
 # Lorentz profile at +/-wing from the (pressure-shifted) line center, spread
@@ -79,8 +132,11 @@ def PedestalSpectrum(wn_grid, tab_name, Temp, pres, diluent, wing):
 
 
     
-def ParallelPart(pTVMS,WNs,ParametersCalculation,Nwn,Npp,Ntt,Nvms,co_hdf5,METHOD):
-    
+def ParallelPart(tasks, ParametersCalculation, Nwn, co_hdf5, dataset_name, METHOD):
+    """Computes all grid points in `tasks` = [(ip,it,iv,p,T,vms), ...] and
+    writes them into co_hdf5[dataset_name] as they finish.
+    Returns the list of failed points (empty on full success)."""
+
     wn_begin = float(ParametersCalculation[3][1])
     wn_end = float(ParametersCalculation[4][1])
 
@@ -125,50 +181,61 @@ def ParallelPart(pTVMS,WNs,ParametersCalculation,Nwn,Npp,Ntt,Nvms,co_hdf5,METHOD
 
 
 
-    FLAG_LINE_MIXING = readSwitch(ParametersCalculation, 20)
+    FLAG_LINE_MIXING = readSwitchByName(ParametersCalculation, 'Line_mixing')
+    flags = {
+        'line_mixing':     FLAG_LINE_MIXING,
+        'remove_pedestal': readSwitchByName(ParametersCalculation, 'Remove_pedestal'),
+        'keep_dat':        readSwitchByName(ParametersCalculation, 'Keep_dat'),
+    }
 
     print('*** CORE_CALCS ***')
     print(molec_id, par_group,iso_list)
-    print('Line mixing (1st-order Rosenkranz): %s'%('ON' if FLAG_LINE_MIXING else 'OFF'))
+    print('Line mixing (1st-order Rosenkranz): %s'%('ON' if flags['line_mixing'] else 'OFF'))
+    print('Pedestal removal: %s'%('ON' if flags['remove_pedestal'] else 'OFF'))
+    print('Keep per-point .dat files: %s'%('ON' if flags['keep_dat'] else 'OFF'))
 
     tab_name = 'HITRAN2020'
 
     fetch_groups = list(par_group)
-    if (FLAG_LINE_MIXING):
+    if (flags['line_mixing']):
         # line-mixing parameters, where HITRAN provides them
         fetch_groups += ['voigt_linemixing', 'sdvoigt_linemixing']
     try:
-        hapi1.fetch_by_ids(  tab_name, iso_list,   wn_begin,  wn_end,   ParameterGroups=fetch_groups)
+        hapi1.fetch_by_ids(  tab_name, iso_list,
+                             max(0., wn_begin-FETCH_MARGIN),  wn_end+FETCH_MARGIN,
+                             ParameterGroups=fetch_groups)
     except Exception as err:
-        if (FLAG_LINE_MIXING):
+        if (flags['line_mixing']):
             print('WARNING: fetch with line-mixing groups failed (%s), refetching without them'%(err))
-            hapi1.fetch_by_ids(  tab_name, iso_list,   wn_begin,  wn_end,   ParameterGroups=par_group)
+            hapi1.fetch_by_ids(  tab_name, iso_list,
+                                 max(0., wn_begin-FETCH_MARGIN),  wn_end+FETCH_MARGIN,
+                                 ParameterGroups=par_group)
         else:
             raise
-
-    hapitable = hapi1.LOCAL_TABLE_CACHE
 
     # NOTE: do not call hapi1.cache2storage() here: fetch_by_ids() has already
     # persisted the table, and cache2storage() in HAPI <= 1.3.0.0 rewrites the
     # header dropping the 'extra' column info (e.g. the line-mixing parameters),
     # which breaks storage2cache() in the worker processes.
-    
-    if ('datafiles' not in os.listdir('./')):
-        os.mkdir('datafiles')
-    
-    
-    if (METHOD=='PC'):
-        print('METHOD IS ASYNCIO')
-        print('Number of CPUs in the system: {}'.format(os.cpu_count()))
 
+    if (flags['keep_dat'] and ('datafiles' not in os.listdir('./'))):
+        os.mkdir('datafiles')
+
+    ds_coef = co_hdf5[dataset_name]
+    n_total = len(tasks)
+
+    if (METHOD=='PC'):
+        print('METHOD IS ASYNCIO (compatibility mode: GIL-bound, no speedup for CPU-bound work)')
+        print('Number of CPUs in the system: {}'.format(os.cpu_count()))
+        _init_worker(tab_name, ParametersCalculation, Nwn, flags)
         loop = asyncio.get_event_loop()                                              # Have a new event loop
-        looper = asyncio.gather(*[CalculateXsecAS(p, T,VMS, WNs,ParametersCalculation,Nwn,hapitable) for (p, T, VMS) in pTVMS])         # Run the loop
+        looper = asyncio.gather(*[CalculateXsecAS(task) for task in tasks])          # Run the loop
         results = loop.run_until_complete(looper)                                    # Wait until finish
+        failures = _consume_results(iter(results), ds_coef, co_hdf5, Nwn, n_total)
     elif (METHOD=='PLAIN'):
         print('METHOD IS PLAIN')
-        for (p, T, VMS) in pTVMS:
-            t_myarg = (p, T, VMS, WNs, ParametersCalculation, Nwn, tab_name)
-            CalculateXsec(t_myarg) 
+        _init_worker(tab_name, ParametersCalculation, Nwn, flags)
+        failures = _consume_results(map(CalculateXsec, tasks), ds_coef, co_hdf5, Nwn, n_total)
     elif (METHOD=='MULTITHREADING'):
         class InvalidCoreCount(Exception):
             "Raised when the number of cores requested more than existed"
@@ -181,28 +248,21 @@ def ParallelPart(pTVMS,WNs,ParametersCalculation,Nwn,Npp,Ntt,Nvms,co_hdf5,METHOD
             if (N_threads>os.cpu_count()):
                 raise InvalidCoreCount
             print('Number of CPUs used: %d'%N_threads)
-            Nptvms = len(pTVMS)
-            myargs = []
-            for iptvms in np.arange(Nptvms):
-                p, T, VMS = pTVMS[iptvms]
-                # t_myarg = (p, T, VMS, WNs, ParametersCalculation, Nwn, hapitable)
-                t_myarg = (p, T, VMS, WNs, ParametersCalculation, Nwn, tab_name)
-
-                myargs.append(t_myarg)
-            # for item in myargs: 
-            #     print('   ',item)
-            with Pool(N_threads) as pool:
-                results = pool.map(CalculateXsec, myargs)
+            # each worker parses the line list once in the initializer; tasks
+            # carry only plain scalars, results stream back one slice at a time
+            with Pool(N_threads, initializer=_init_worker,
+                      initargs=(tab_name, ParametersCalculation, Nwn, flags)) as pool:
+                failures = _consume_results(
+                    pool.imap_unordered(CalculateXsec, tasks, chunksize=1),
+                    ds_coef, co_hdf5, Nwn, n_total)
         except InvalidCoreCount:
             print("Exception occurred: requested too many cores!")
             sys.exit()
 
-        
     else:
-        raise NameError('ERROR: Unknown method!') 
-     
+        raise NameError('ERROR: Unknown method!')
 
-    return co_hdf5
+    return failures
 
 
 def save_xsc( filename, vals_nu, vals_abs  , vals_unc_l, vals_unc_u):
@@ -217,159 +277,69 @@ def save_xsc( filename, vals_nu, vals_abs  , vals_unc_l, vals_unc_u):
 
 
 # calculate x-sec for exact P, T, VMS of exact molecule
-def CalculateXsec(args):
-    pres, Temp, VMS, WN_range, param, Nwn, tab_name = args
-    # print('Calculate xsec, hapitable')
-    class NaNError(Exception):
-        'Corrupted p, T or VMS value'
-        pass
-    class ProfileNameError(Exception):
-        'Corrupted profile name'
-        pass
-    
+def CalculateXsec(task):
+    """task = (ip, it, iv, pres, Temp, VMS) with plain ints/floats.
+    Returns (ip, it, iv, coef | None, error_text | None).
+    Never raises: failures are returned, so one bad grid point cannot
+    kill the whole run. Worker state comes from _init_worker()."""
+    ip, it, iv, pres, Temp, VMS = task
     try:
+        if (WORKER.get('init_error')):
+            return (ip, it, iv, None, 'worker init failed:\n%s'%WORKER['init_error'])
         if ((pres!=pres) or (Temp!=Temp) or (VMS!=VMS)):
-            raise NaNError
-        
+            return (ip, it, iv, None, 'NaN in p/T/VMS value')
+
+        param    = WORKER['param']
+        tab_name = WORKER['tab_name']
+        wngrid   = WORKER['wngrid']
+
         wn_begin = float(param[3][1])
         wn_end = float(param[4][1])
-    
-        wn_step = (wn_end-wn_begin)/(Nwn-1)
-        
         profile_name = param[18][1]
-        # print(profile_name)
 
-        FLAG_LINE_MIXING = readSwitch(param, 20)
-        FLAG_REMOVE_PEDESTAL = readSwitch(param, 21)
+        FLAG_LINE_MIXING = WORKER['flags']['line_mixing']
+        FLAG_REMOVE_PEDESTAL = WORKER['flags']['remove_pedestal']
         diluent = {'self':1.00-VMS, 'air':VMS}
-
-        # print('%25.22f'%wn_step)
-        # print('core_calcs: wn_len', param[3][1],param[4][1])
-        # print('core_calcs: wn_step',wn_step)
-
-        wngrid =  np.linspace(wn_begin,wn_end,Nwn)
 
         if (FLAG_DEBUG_PRINT):
             print('*** DEBUG: X-sec ***')
             print('VMS=%4.2f, type='%VMS, type(VMS))
-    #        print(tableList())
-            print('Range from %8.2f to %8.2f, step %6.2f'%(wn_begin, wn_end,wn_step))
+            print('Range from %8.2f to %8.2f, %d points'%(wn_begin, wn_end, WORKER['Nwn']))
             print('Pressure=%6.2e, temperature=%7.2f'%(pres,Temp))
             print('*** END: X-sec ***\n')
-        IndexMol = int(param[10][1])
-        IndexBroad = int(param[15][1])
-        
-        
-        # PROBLEM: FIX THE NAME AT UPD_HDF5 TOO!
-        CoefFileName = './datafiles/%06.2fT_Id%02d_%06.4eatm_IdBroad%02d_%06.4fVMS_H2O_SDV_hitran2020.dat'%(Temp,IndexMol,pres,IndexBroad,VMS)
-        hapi1.storage2cache(tab_name)
-        # print(hapi1.LOCAL_TABLE_CACHE.keys())
-        if (profile_name == 'HT'):
-            nu_co,coef_co = hapi1.absorptionCoefficient_HT(SourceTables='HITRAN2020', HITRAN_units=True,
-                                                                OmegaRange=[wn_begin,wn_end],WavenumberStep=wn_step,
-                                                                WavenumberWing=WING_WN,OmegaWingHW=0.0,LineMixingRosen=False,
-                                                                Environment={'T':Temp,'p':pres},
-                                                                Diluent=diluent,
-                                                                File = CoefFileName)
 
+        # WavenumberGrid pins the calculation to the exact grid stored in the
+        # 'Wavenumber' dataset (HAPI's internal grid differs in the last ulp)
+        kwargs = dict(SourceTables=tab_name, HITRAN_units=True,
+                      OmegaRange=[wn_begin,wn_end],
+                      WavenumberGrid=wngrid,
+                      WavenumberWing=WING_WN, OmegaWingHW=0.0,
+                      Environment={'T':Temp,'p':pres},
+                      Diluent=diluent)
+        if (profile_name == 'HT'):
+            nu_co,coef_co = hapi1.absorptionCoefficient_HT(LineMixingRosen=False, **kwargs)
         elif (profile_name == 'SDVoigt'):
-            nu_co,coef_co = hapi1.absorptionCoefficient_SDVoigt(SourceTables='HITRAN2020', HITRAN_units=True,
-                                                                OmegaRange=[wn_begin,wn_end],WavenumberStep=wn_step,
-                                                                WavenumberWing=WING_WN,OmegaWingHW=0.0,LineMixingRosen=FLAG_LINE_MIXING,
-                                                                Environment={'T':Temp,'p':pres},
-                                                                Diluent=diluent,
-                                                                File = CoefFileName)
+            nu_co,coef_co = hapi1.absorptionCoefficient_SDVoigt(LineMixingRosen=FLAG_LINE_MIXING, **kwargs)
         elif (profile_name == 'Voigt'):
-            nu_co,coef_co = hapi1.absorptionCoefficient_Voigt(SourceTables='HITRAN2020', HITRAN_units=True,
-                                                                OmegaRange=[wn_begin,wn_end],WavenumberStep=wn_step,
-                                                                WavenumberWing=WING_WN,OmegaWingHW=0.0,LineMixingRosen=FLAG_LINE_MIXING,
-                                                                Environment={'T':Temp,'p':pres},
-                                                                Diluent=diluent,
-                                                                File = CoefFileName)
+            nu_co,coef_co = hapi1.absorptionCoefficient_Voigt(LineMixingRosen=FLAG_LINE_MIXING, **kwargs)
         elif (profile_name == 'Lorentz'):
-            nu_co,coef_co = hapi1.absorptionCoefficient_Lorentz(SourceTables='HITRAN2020', HITRAN_units=True,
-                                                                OmegaRange=[wn_begin,wn_end],WavenumberStep=wn_step,
-                                                                WavenumberWing=WING_WN,OmegaWingHW=0.0,LineMixingRosen=False,
-                                                                Environment={'T':Temp,'p':pres},
-                                                                Diluent=diluent,
-                                                                File = CoefFileName)
+            nu_co,coef_co = hapi1.absorptionCoefficient_Lorentz(LineMixingRosen=False, **kwargs)
         else:
-            raise ProfileNameError
+            return (ip, it, iv, None, 'unknown profile name: %r'%profile_name)
 
         if (FLAG_REMOVE_PEDESTAL):
             coef_co = coef_co - PedestalSpectrum(nu_co, tab_name, Temp, pres, diluent, WING_WN)
 
-        xunc_l, xunc_u = np.zeros(len(nu_co)),np.zeros(len(nu_co))
-        save_xsc( CoefFileName, nu_co, coef_co, xunc_l, xunc_u  )
-        # print('saved?')
-        return
-    except NaNError:
-        print('Corrupted p, T or VMS value')
-        return np.linspace(-1.0,-1.0,Nwn)
-    else:
-        err = Exception
-        print("Unexpected %s"%(err))
-        sys.exit()
-    
-@background
-def CalculateXsecAS(pres, Temp, VMS,WN_range, param, Nwn, hapitable):
-    
-    # print('Calculate xsec, hapitable')
-    class NaNError(Exception):
-        'Corrupted p, T or VMS value'
-        pass
-    class ProfileNameError(Exception):
-        'Corrupted profile name'
-        pass
-    
-    try:
-        if ((pres!=pres) or (Temp!=Temp) or (VMS!=VMS)):
-            raise NaNError
-        
-        wn_begin = float(param[3][1])
-        wn_end = float(param[4][1])
-    
-        wn_step = (wn_end-wn_begin)/(Nwn-1)
-        print('%25.22f'%wn_step)
-        print('core_calcs: wn_len', param[3][1],param[4][1])
-        print('core_calcs: wn_step',wn_step)
-        wngrid =  np.linspace(wn_begin,wn_end,Nwn)
-        if (FLAG_DEBUG_PRINT):
-            print('*** DEBUG: X-sec ***')
-            print('VMS=%4.2f, type='%VMS, type(VMS))
-    #        print(tableList())
-            print('Range from %8.2f to %8.2f, step %6.2f'%(wn_begin, wn_end,wn_step))
-            print('Pressure=%6.2f, temperature=%7.2f'%(pres,Temp))
-            print('*** END: X-sec ***\n')
-        IndexMol = int(param[10][1])
-        IndexBroad = int(param[15][1])
-        
-        
-        FLAG_LINE_MIXING = readSwitch(param, 20)
-        FLAG_REMOVE_PEDESTAL = readSwitch(param, 21)
-        diluent = {'self':1.00-VMS, 'air':VMS}
+        coef_co = np.asarray(coef_co, dtype=np.float64)
+        if (WORKER['flags']['keep_dat']):
+            zeros = np.zeros(len(nu_co))
+            save_xsc( dat_filename(param, pres, Temp, VMS), nu_co, coef_co, zeros, zeros )
+        return (ip, it, iv, coef_co, None)
+    except Exception:
+        return (ip, it, iv, None, traceback.format_exc())
 
-        # PROBLEM: FIX THE NAME AT UPD_HDF5 TOO!
-        CoefFileName = './datafiles/%06.2fT_Id%02d_%06.4eatm_IdBroad%02d_%06.4fVMS_H2O_SDV_hitran2020.dat'%(Temp,IndexMol,pres,IndexBroad,VMS)
-        hapi1.LOCAL_TABLE_CACHE = hapitable
-        # print(hapitable.keys())
-        nu_co,coef_co = hapi1.absorptionCoefficient_SDVoigt(SourceTables='HITRAN2020', HITRAN_units=True,
-                                                            OmegaRange=[wn_begin,wn_end],WavenumberStep=wn_step,
-                                                            WavenumberWing=WING_WN,OmegaWingHW=0.0,LineMixingRosen=FLAG_LINE_MIXING,
-                                                            Environment={'T':Temp,'p':pres},
-                                                            Diluent=diluent,
-                                                            File = CoefFileName)
-        if (FLAG_REMOVE_PEDESTAL):
-            coef_co = coef_co - PedestalSpectrum(nu_co, 'HITRAN2020', Temp, pres, diluent, WING_WN)
-        xunc_l, xunc_u = np.zeros(len(nu_co)),np.zeros(len(nu_co))
-        save_xsc( CoefFileName, nu_co, coef_co, xunc_l, xunc_u  )
-        # print('saved?')
-        return
-    except NaNError:
-        print('Corrupted p, T or VMS value')
-        return np.linspace(-1.0,-1.0,Nwn)
-    else:
-        err = Exception
-        print("Unexpected %s"%(err))
-        sys.exit()
-        
+@background
+def CalculateXsecAS(task):
+    # compatibility wrapper for the asyncio method: threads share the module
+    # state set by _init_worker() in the main thread
+    return CalculateXsec(task)

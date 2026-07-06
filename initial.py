@@ -148,6 +148,17 @@ def mergeParams(P,T,VMS):
                 onevisionlist.append([tp,tt,tv])
                 indexvisionlist.append([ip,it,iv])
     return onevisionlist, indexvisionlist
+
+# flat task list for the parallel part: one (ip, it, iv, p, T, vms) tuple of
+# plain ints/floats per grid point (cheap to pickle, indices travel with the
+# task and come back with the result)
+def mergeParamsIndexed(P, T, VMS):
+    tasks = []
+    for iv, tv in np.ndenumerate(VMS):
+        for ip, tp in np.ndenumerate(P):
+            for it, tt in np.ndenumerate(T[ip]):
+                tasks.append((ip[0], it[0], iv[0], float(tp), float(tt), float(tv)))
+    return tasks
     
     
 

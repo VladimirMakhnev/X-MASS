@@ -95,44 +95,17 @@ def CloseHDF5(ftype):
         print("Unexpected %s"%(err))
         sys.exit()
 
-def SaveHDF5(ftype, p,t,vms,coef_):
-    try:
-        global FLAG_OPENED_HDF5 
-        if ((FLAG_OPENED_HDF5 != True) or (ftype.__repr__()=='<Closed HDF5 file>')):
-            raise FileNotFoundError
-        else:
-            
-
-            return
-    except FileNotFoundError:
-        print('File to work with is not found or already closed')
-        sys.exit()
-    else:
-        err = Exception
-        print("Unexpected %s"%(err))
-        sys.exit()
-    
-def UpdateHDF5(ftype, pTVMS, ipTVMS, param):
-
-    IndexMol = int(param[10][1])
-    IndexBroad = int(param[15][1])
+# recovery utility for Keep_dat runs: rebuilds dataset rows from the
+# per-point text files, one slice at a time (never loads the full grid)
+def RebuildFromDat(ftype, tasks, param):
+    from core_calcs import dat_filename
 
     Index_abs = '%02d'%(int(ftype['Gas_Index'][()]))
     dataset_name = 'Gas_'+Index_abs+'_Absorption'
 
-    set_abs = ftype[dataset_name][()]
-    for i, tptvms in enumerate(pTVMS):
-        tp, tt, tv = tptvms[0], tptvms[1], tptvms[2]
-        print('Opening %d file out of %d'%(i,len(pTVMS)))
-
-        CoefFileName = './datafiles/%06.2fT_Id%02d_%06.4eatm_IdBroad%02d_%06.4fVMS_H2O_SDV_hitran2020.dat'%(tt,IndexMol,tp,IndexBroad,tv)
-        coeff = ((np.loadtxt(CoefFileName)).T)[1]
-
-
-        set_abs[ipTVMS[i][0][0]][ipTVMS[i][1][0]][ipTVMS[i][2][0]][:] = coeff
-        coeff = []    
-    ftype[dataset_name][()] = set_abs
-
-    
+    for i, (ip, it, iv, tp, tt, tv) in enumerate(tasks):
+        print('Opening %d file out of %d'%(i,len(tasks)))
+        coeff = ((np.loadtxt(dat_filename(param, tp, tt, tv))).T)[1]
+        ftype[dataset_name][ip, it, iv, :] = coeff
 
     return ftype

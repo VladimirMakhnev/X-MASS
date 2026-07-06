@@ -36,7 +36,7 @@ if __name__ == "__main__":
     #############################################################
     ### BEGIN OF MAIN PART ######################################
     #############################################################
-    XMASSSEC_VERSION = '0.8.1'; __version__ = XMASSSEC_VERSION
+    XMASSSEC_VERSION = '0.9'; __version__ = XMASSSEC_VERSION
     XMASSSEC_HISTORY = [
     'INITIATION OF INPUT FILE WITH PARAMETERS 31.01.23 (ver. 0.1)',
     'CREATION OF HDF5 FILE + SOME EXCEPTIONS HANDLING (ver. 0.2)',
@@ -54,7 +54,9 @@ if __name__ == "__main__":
     'MULTIPLE PARALLEL OPTIONS (ver. 0.6)',
     'COMMENTS AND STYLE (ver. 0.7)',
     'NEW INPUT FILE, PROFILE PICK (ver. 0.8)',
-    'TIME PROFILER (ver. 0.8.1)'
+    'TIME PROFILER (ver. 0.8.1)',
+    'LINE MIXING (ROSENKRANZ), MT_CKD PEDESTAL REMOVAL (ver. 0.8.2)',
+    'PER-WORKER TABLE CACHE, DIRECT HDF5 WRITES, NAN FAILURE ROWS (ver. 0.9)'
     ]
     
     # version header
@@ -135,34 +137,24 @@ if __name__ == "__main__":
     
     # Initialazing the core HDF5 file
     co_hdf5 = hdf5_io.OpenHDF5(HDF5FileName, ParametersCalculation, Pressures, Temps, VMSs, WNs, Npp, Ntt, Nvms, Nwn)
+    dataset_name = 'Gas_%02d_Absorption'%(int(ParametersCalculation[10][1]))
 
-    # Constructing p/T/VMS array out of values
-    pTVMS, ipTVMS = initial.mergeParams(Pressures, Temps, VMSs)
-    
-    # print(len(pTVMS))
+    # Constructing the flat task list: one (ip,it,iv,p,T,vms) per grid point
+    tasks = initial.mergeParamsIndexed(Pressures, Temps, VMSs)
 
     print("***********************************************")
     print("*** CALCULATIONS PART *************************")
     print("***********************************************")
-    
-    # Calculation part
-    co_hdf5 = core_calcs.ParallelPart(pTVMS,WNs,ParametersCalculation,Nwn,Npp,Ntt,Nvms,co_hdf5,METHOD)
-    # Populating the HDF5 file by x-sections
-    co_hdf5 = hdf5_io.UpdateHDF5(co_hdf5, pTVMS, ipTVMS, ParametersCalculation)
-  
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+
+    # Calculation part: cross-sections are written into the HDF5 dataset
+    # slice by slice as they are computed
+    failures = core_calcs.ParallelPart(tasks, ParametersCalculation, Nwn, co_hdf5, dataset_name, METHOD)
+
+    if (failures):
+        print('WARNING: %d of %d grid points FAILED; their rows are left as NaN in %s.'%(len(failures), len(tasks), HDF5FileName))
+        for (ip, it, iv, err) in failures:
+            print('    (ip=%d, it=%d, iv=%d): %s'%(ip, it, iv, err.strip().splitlines()[-1]))
+
     # Closing the HDF5 file
     hdf5_io.CloseHDF5(co_hdf5)
     
@@ -190,4 +182,7 @@ if __name__ == "__main__":
     if (FLAG_LOG_FILE):
         sys.stdout = orig_stdout
         fLog.close()
+
+    # nonzero exit when some grid points failed (their rows are NaN)
+    sys.exit(1 if failures else 0)
     

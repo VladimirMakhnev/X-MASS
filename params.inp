@@ -20,3 +20,4 @@ Profile:SDVoigt
 Profile_group:160-char
 Line_mixing:ON
 Remove_pedestal:OFF
+Keep_dat:OFF
