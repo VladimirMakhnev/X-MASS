@@ -1,11 +1,6 @@
 from initial import FLAG_DEBUG_PRINT
 
-import json
-from getpass import getpass
-
 import numpy as np
-import pylab as pl
-import matplotlib as mpl
 
 #from hapi2 import *
 #from hapi import *
@@ -196,8 +191,8 @@ def ParallelPart(pTVMS,WNs,ParametersCalculation,Nwn,Npp,Ntt,Nvms,co_hdf5,METHOD
                 myargs.append(t_myarg)
             # for item in myargs: 
             #     print('   ',item)
-            pool = Pool(N_threads)
-            results = pool.map(CalculateXsec, myargs)
+            with Pool(N_threads) as pool:
+                results = pool.map(CalculateXsec, myargs)
         except InvalidCoreCount:
             print("Exception occurred: requested too many cores!")
             sys.exit()

@@ -1,11 +1,19 @@
 import numpy as np
 import time
 import sys
+import cProfile
+import pstats
 import initial
 import hdf5_io
 import core_calcs
 
-import winsound
+try:
+    import winsound
+    def _beep(freq, dur):
+        winsound.Beep(freq, dur)
+except ImportError:          # winsound exists on Windows only
+    def _beep(freq, dur):
+        pass
 
 # TO RECORD OUTPUT INTO THE FILE -- TRUE
 # TO KEEP IT IN THE CONSOLE      -- FALSE
@@ -19,9 +27,6 @@ if __name__ == "__main__":
     fLog = open('output.log', 'w')
     fLog.close()
     if (FLAG_LOG_FILE):
-        import cProfile
-        import pstats
-
         orig_stdout = sys.stdout
         fLog = open('output.log', 'a')
         sys.stdout = fLog
@@ -175,10 +180,10 @@ if __name__ == "__main__":
 
     t_end = time.time()
     print('Time taken: %d seconds'%(t_end-t_begin))
-    winsound.Beep(261, 400)
-    winsound.Beep(329, 400)
-    winsound.Beep(392 , 400)
-    winsound.Beep(523, 700)
+    _beep(261, 400)
+    _beep(329, 400)
+    _beep(392, 400)
+    _beep(523, 700)
     print('\nDone.')
 
     # Recording the output into the file

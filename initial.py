@@ -87,18 +87,13 @@ def openTemp(fname,Np):
 # opens pressure array file
 def openVMS(fname):
     try:
-        avms = np.genfromtxt(fname,dtype='float')
+        # atleast_1d: a single-value file yields a 0-d array, which breaks len()
+        avms = np.atleast_1d(np.genfromtxt(fname,dtype='float'))
         global FLAG_DEBUG_PRINT
         if (FLAG_DEBUG_PRINT):
             print('*** DEBUG: VMS input ***')
-            if (avms.shape != ()):
-                [print('%12.6f'%(item)) for item in avms]
-            else:
-                print(avms)
+            [print('%12.6f'%(item)) for item in avms]
             print('*** END: VMS input ***\n')
-        if (len(avms)==1):
-            avms = [avms]
-        # avms = [avms]
         print('*********\nVMS file %s is opened well\nTotal number of lines: %d\n*********'%(fname,len(avms)))
         return avms, len(avms)
     except FileNotFoundError:
