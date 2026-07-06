@@ -9,7 +9,11 @@ import hapi as hapi1
 
 import sys
 import os
+import logging
+import contextlib
 import traceback
+
+LOG = logging.getLogger('xmass')
 
 
 from multiprocessing import Pool
@@ -47,6 +51,8 @@ def _init_worker(tab_name, param, Nwn, flags):
     initializer would make multiprocessing respawn workers in a loop, so
     errors are stored and reported by every task instead."""
     try:
+        if (flags.get('quiet_workers') and not FLAG_DEBUG_PRINT):
+            sys.stdout = open(os.devnull, 'w')   # silence per-point HAPI chatter
         if (tab_name not in hapi1.LOCAL_TABLE_CACHE):
             hapi1.storage2cache(tab_name)
         wn_begin = float(param[3][1])
@@ -79,10 +85,10 @@ def _consume_results(results_iter, ds_coef, hdf5file, Nwn, n_total):
             if (err is None):
                 err = 'bad result shape: %s'%(str(getattr(coef, 'shape', None)))
             failures.append((ip, it, iv, err))
-            print('FAILED point (ip=%d, it=%d, iv=%d):\n%s'%(ip, it, iv, err))
+            LOG.warning('FAILED point (ip=%d, it=%d, iv=%d):\n%s'%(ip, it, iv, err))
         if (n_done % 16 == 0):
             hdf5file.flush()
-        print('Progress: %d/%d points done'%(n_done, n_total))
+        LOG.info('Progress: %d/%d points done'%(n_done, n_total))
     hdf5file.flush()
     return failures
 
@@ -131,7 +137,7 @@ def PedestalSpectrum(wn_grid, tab_name, Temp, pres, diluent, wing):
 
 
     
-def ParallelPart(tasks, ParametersCalculation, Nwn, co_hdf5, dataset_name, METHOD):
+def ParallelPart(tasks, ParametersCalculation, Nwn, co_hdf5, dataset_name, METHOD, quiet=False):
     """Computes all grid points in `tasks` = [(ip,it,iv,p,T,vms), ...] and
     writes them into co_hdf5[dataset_name] as they finish.
     Returns the list of failed points (empty on full success)."""
@@ -185,13 +191,14 @@ def ParallelPart(tasks, ParametersCalculation, Nwn, co_hdf5, dataset_name, METHO
         'line_mixing':     FLAG_LINE_MIXING,
         'remove_pedestal': readSwitchByName(ParametersCalculation, 'Remove_pedestal'),
         'keep_dat':        readSwitchByName(ParametersCalculation, 'Keep_dat'),
+        'quiet_workers':   quiet,
     }
 
-    print('*** CORE_CALCS ***')
-    print(molec_id, par_group,iso_list)
-    print('Line mixing (1st-order Rosenkranz): %s'%('ON' if flags['line_mixing'] else 'OFF'))
-    print('Pedestal removal: %s'%('ON' if flags['remove_pedestal'] else 'OFF'))
-    print('Keep per-point .dat files: %s'%('ON' if flags['keep_dat'] else 'OFF'))
+    LOG.info('*** CORE_CALCS ***')
+    LOG.info('%s %s %s'%(molec_id, par_group, iso_list))
+    LOG.info('Line mixing (1st-order Rosenkranz): %s'%('ON' if flags['line_mixing'] else 'OFF'))
+    LOG.info('Pedestal removal: %s'%('ON' if flags['remove_pedestal'] else 'OFF'))
+    LOG.info('Keep per-point .dat files: %s'%('ON' if flags['keep_dat'] else 'OFF'))
 
     tab_name = 'HITRAN2020'
 
@@ -199,16 +206,22 @@ def ParallelPart(tasks, ParametersCalculation, Nwn, co_hdf5, dataset_name, METHO
     if (flags['line_mixing']):
         # line-mixing parameters, where HITRAN provides them
         fetch_groups += ['voigt_linemixing', 'sdvoigt_linemixing']
-    try:
-        hapi1.fetch_by_ids(  tab_name, iso_list,
-                             max(0., wn_begin-FETCH_MARGIN),  wn_end+FETCH_MARGIN,
-                             ParameterGroups=fetch_groups)
-    except Exception as err:
-        if (flags['line_mixing']):
-            print('WARNING: fetch with line-mixing groups failed (%s), refetching without them'%(err))
+    def _fetch(groups):
+        if (quiet):
+            with open(os.devnull, 'w') as devnull, contextlib.redirect_stdout(devnull):
+                hapi1.fetch_by_ids(  tab_name, iso_list,
+                                     max(0., wn_begin-FETCH_MARGIN),  wn_end+FETCH_MARGIN,
+                                     ParameterGroups=groups)
+        else:
             hapi1.fetch_by_ids(  tab_name, iso_list,
                                  max(0., wn_begin-FETCH_MARGIN),  wn_end+FETCH_MARGIN,
-                                 ParameterGroups=par_group)
+                                 ParameterGroups=groups)
+    try:
+        _fetch(fetch_groups)
+    except Exception as err:
+        if (flags['line_mixing']):
+            LOG.warning('WARNING: fetch with line-mixing groups failed (%s), refetching without them'%(err))
+            _fetch(par_group)
         else:
             raise
 
@@ -224,15 +237,15 @@ def ParallelPart(tasks, ParametersCalculation, Nwn, co_hdf5, dataset_name, METHO
     n_total = len(tasks)
 
     if (METHOD=='PC'):
-        print('METHOD IS ASYNCIO (compatibility mode: GIL-bound, no speedup for CPU-bound work)')
-        print('Number of CPUs in the system: {}'.format(os.cpu_count()))
+        LOG.info('METHOD IS ASYNCIO (compatibility mode: GIL-bound, no speedup for CPU-bound work)')
+        LOG.info('Number of CPUs in the system: %d'%os.cpu_count())
         _init_worker(tab_name, ParametersCalculation, Nwn, flags)
         loop = asyncio.get_event_loop()                                              # Have a new event loop
         looper = asyncio.gather(*[CalculateXsecAS(task) for task in tasks])          # Run the loop
         results = loop.run_until_complete(looper)                                    # Wait until finish
         failures = _consume_results(iter(results), ds_coef, co_hdf5, Nwn, n_total)
     elif (METHOD=='PLAIN'):
-        print('METHOD IS PLAIN')
+        LOG.info('METHOD IS PLAIN')
         _init_worker(tab_name, ParametersCalculation, Nwn, flags)
         failures = _consume_results(map(CalculateXsec, tasks), ds_coef, co_hdf5, Nwn, n_total)
     elif (METHOD=='MULTITHREADING'):
@@ -241,12 +254,12 @@ def ParallelPart(tasks, ParametersCalculation, Nwn, co_hdf5, dataset_name, METHO
             pass
 
         try:
-            print('Number of CPUs in the system: {}'.format(os.cpu_count()))
-            print('METHOD IS MULTIPROCESSING')
+            LOG.info('Number of CPUs in the system: %d'%os.cpu_count())
+            LOG.info('METHOD IS MULTIPROCESSING')
             N_threads = int(ParametersCalculation[17][1])
             if (N_threads>os.cpu_count()):
                 raise InvalidCoreCount
-            print('Number of CPUs used: %d'%N_threads)
+            LOG.info('Number of CPUs used: %d'%N_threads)
             # each worker parses the line list once in the initializer; tasks
             # carry only plain scalars, results stream back one slice at a time
             with Pool(N_threads, initializer=_init_worker,
@@ -255,7 +268,7 @@ def ParallelPart(tasks, ParametersCalculation, Nwn, co_hdf5, dataset_name, METHO
                     pool.imap_unordered(CalculateXsec, tasks, chunksize=1),
                     ds_coef, co_hdf5, Nwn, n_total)
         except InvalidCoreCount:
-            print("Exception occurred: requested too many cores!")
+            LOG.error("Exception occurred: requested too many cores!")
             sys.exit()
 
     else:

@@ -1,7 +1,10 @@
 import h5py
 import sys
+import logging
 import numpy as np
 from initial import FLAG_DEBUG_PRINT, readParamByName, readSwitchByName
+
+LOG = logging.getLogger('xmass')
 
 # spectral chunk length: 2 MB of float64 per chunk; with chunks=(1,1,1,C) each
 # grid point owns whole chunks, so per-point writes need no read-modify-write
@@ -18,7 +21,7 @@ def OpenHDF5(fname,params,pres, temp, vms, wns, Np, Nt, Nvms, Nwn):
         global FLAG_OPENED_HDF5
         FLAG_OPENED_HDF5 = True
 
-        print('*********\nHDF5 file %s is opened well\n*********'%(fname))
+        LOG.info('HDF5 file %s is opened well'%(fname))
 
 # saturating the attributes
         [f.attrs.__setitem__(item[0],item[1]) for item in params[:6] ]
@@ -70,7 +73,7 @@ def OpenHDF5(fname,params,pres, temp, vms, wns, Np, Nt, Nvms, Nwn):
             print('*** END: Attributes ***\n')
         return f
     except FileExistsError:
-        print('Attempt to re-write file!')
+        LOG.error('Attempt to re-write file!')
         sys.exit()
     else:
         err = Exception
@@ -88,7 +91,7 @@ def CloseHDF5(ftype):
             FLAG_OPENED_HDF5 = False
             return
     except FileNotFoundError:
-        print('File to close is not found or already closed')
+        LOG.error('File to close is not found or already closed')
         sys.exit()
     else:
         err = Exception
@@ -104,7 +107,7 @@ def RebuildFromDat(ftype, tasks, param):
     dataset_name = 'Gas_'+Index_abs+'_Absorption'
 
     for i, (ip, it, iv, tp, tt, tv) in enumerate(tasks):
-        print('Opening %d file out of %d'%(i,len(tasks)))
+        LOG.info('Opening %d file out of %d'%(i,len(tasks)))
         coeff = ((np.loadtxt(dat_filename(param, tp, tt, tv))).T)[1]
         ftype[dataset_name][ip, it, iv, :] = coeff
 

@@ -1,5 +1,8 @@
 import numpy as np
 import sys
+import logging
+
+LOG = logging.getLogger('xmass')
 
 # FLAGS
 FLAG_DEBUG_PRINT = False
@@ -27,18 +30,18 @@ def openParametersFile(fname):
                 print('*** DEBUG: Parameters input ***')
                 [print(item[0],'\t',item[1]) for item in params]
                 print('*** END: Parameters input ***\n')
-        print('*********\nParameters file %s is opened well\n*********'%(fname))
+        LOG.info('Parameters file %s is opened well'%(fname))
         return params
     except FileNotFoundError:
-        print('%s file is not found!'%fname)
-        sys.exit()
+        LOG.error('%s file is not found!'%fname)
+        sys.exit(2)
         # raise FileNotFoundError
     except ParamsError:
-        print("Not enought parameters in %s!"%fname)
-        sys.exit()
+        LOG.error("Not enough parameters in %s!"%fname)
+        sys.exit(2)
     except Exception as err:
-        print('WOW, UNKNOWN ERROR: %s'%(err))
-        sys.exit()
+        LOG.error('UNKNOWN ERROR reading %s: %s'%(fname,err))
+        sys.exit(2)
 
 
 
@@ -52,11 +55,11 @@ def openPressure(fname):
             print('*** DEBUG: Pressure input ***')
             [print('%16.9f'%(item)) for item in apres]
             print('*** END: Pressure input ***\n')
-        print('*********\nPressure file %s is opened well\nTotal number of lines: %d\n*********'%(fname,len(apres)))
+        LOG.info('Pressure file %s is opened well, total number of lines: %d'%(fname,len(apres)))
         return apres, len(apres)
     except FileNotFoundError:
-        print('%s file is not found!'%fname)
-        sys.exit()
+        LOG.error('%s file is not found!'%fname)
+        sys.exit(2)
     
 # opens temperature array file
 def openTemp(fname,Np):
@@ -75,14 +78,14 @@ def openTemp(fname,Np):
                 [print(item1, end='\t') for item1 in item]
                 print('')
             print('*** END: Temperature input ***\n')
-        print('*********\nTemperature file %s is opened well\nTotal number of lines: %d\nNo of temperatures: %d\n*********'%(fname,Npp,Ntt))
+        LOG.info('Temperature file %s is opened well, %d pressure rows x %d temperatures'%(fname,Npp,Ntt))
         return atemp, Npp, Ntt
     except FileNotFoundError:
-        print('%s file is not found!'%fname)
-        sys.exit()
+        LOG.error('%s file is not found!'%fname)
+        sys.exit(2)
     except PxTError:
-        print('Corrupted relations between Np and NpxNt array')
-        sys.exit()
+        LOG.error('Temperature grid shape does not match the number of pressures (expected %d rows)'%Np)
+        sys.exit(2)
 
 # opens pressure array file
 def openVMS(fname):
@@ -94,11 +97,11 @@ def openVMS(fname):
             print('*** DEBUG: VMS input ***')
             [print('%12.6f'%(item)) for item in avms]
             print('*** END: VMS input ***\n')
-        print('*********\nVMS file %s is opened well\nTotal number of lines: %d\n*********'%(fname,len(avms)))
+        LOG.info('VMS file %s is opened well, total number of lines: %d'%(fname,len(avms)))
         return avms, len(avms)
     except FileNotFoundError:
-        print('%s file is not found!'%fname)
-        sys.exit()
+        LOG.error('%s file is not found!'%fname)
+        sys.exit(2)
 
 # opens and generate wn_grid
 def openXgenetareWn(fname,params):
@@ -117,12 +120,12 @@ def openXgenetareWn(fname,params):
                 [print('%12.6f'%item2) for item2 in WN_range[-10:]]
                 print(Nwn)
                 print('*** END: WN input ***\n')
-            print('*********\nWN file %s is opened well\nTotal number of wn-points: %d\n*********'%(fname,Nwn))
+            LOG.info('WN file %s is opened well, total number of wn-points: %d'%(fname,Nwn))
                 
             return WN_range, Nwn
     except FileNotFoundError:
-        print('%s file is not found!'%fname)
-        sys.exit()
+        LOG.error('%s file is not found!'%fname)
+        sys.exit(2)
 
 # name-based lookup for option keys; use only with keys that appear at most
 # once in the parameter file (legacy duplicated keys stay positional)
@@ -137,6 +140,17 @@ def readSwitchByName(params, name, default=False):
     if (val is None):
         return default
     return val.upper() in ('ON', 'TRUE', 'YES', '1')
+
+# override or append an option value (used by the command-line overrides)
+def setParamByName(params, name, value):
+    for item in params:
+        if (item[0].strip() == name):
+            if (len(item) > 1):
+                item[1] = value
+            else:
+                item.append(value)
+            return
+    params.append([name, value])
 
 # collects the pressures/temperatures/volume mixing ration into the pTVMS array
 def mergeParams(P,T,VMS):
