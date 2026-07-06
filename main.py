@@ -59,6 +59,12 @@ def parse_cli():
                         help='override Number_cores from params file')
     parser.add_argument('--keep-dat', action='store_true',
                         help='also write the legacy per-point .dat text files')
+    fastgrp = parser.add_mutually_exclusive_group()
+    fastgrp.add_argument('--fast', action='store_true',
+                         help='enable the vectorized Voigt fast path '
+                              '(overrides Fast_Voigt in the params file)')
+    fastgrp.add_argument('--no-fast', action='store_true',
+                         help='force the pure-HAPI reference path')
     parser.add_argument('--validate-only', action='store_true',
                         help='read and check all inputs, print a run summary '
                              'and exit without calculating')
@@ -150,6 +156,10 @@ if __name__ == "__main__":
         initial.setParamByName(ParametersCalculation, 'Number_cores', str(args.cores))
     if (args.keep_dat):
         initial.setParamByName(ParametersCalculation, 'Keep_dat', 'ON')
+    if (args.fast):
+        initial.setParamByName(ParametersCalculation, 'Fast_Voigt', 'ON')
+    if (args.no_fast):
+        initial.setParamByName(ParametersCalculation, 'Fast_Voigt', 'OFF')
     LOG.info('%s'%ParametersCalculation)
 
     # opening pressure file

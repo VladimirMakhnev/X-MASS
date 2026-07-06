@@ -48,7 +48,8 @@ def openParametersFile(fname):
 # opens pressure array file
 def openPressure(fname):
     try:
-        apres = np.genfromtxt(fname,dtype='float')
+        # atleast_1d: a single-value file yields a 0-d array, which breaks len()
+        apres = np.atleast_1d(np.genfromtxt(fname,dtype='float'))
         apres = apres#*1.0e-3
         global FLAG_DEBUG_PRINT
         if (FLAG_DEBUG_PRINT):
@@ -67,7 +68,8 @@ def openTemp(fname,Np):
         'Corrupted relations between Np and NpxNt array'
         pass
     try:
-        atemp = np.genfromtxt(fname,dtype='float', missing_values='296.15')
+        # atleast_2d: single-row or single-value files must still be Np x Nt
+        atemp = np.atleast_2d(np.genfromtxt(fname,dtype='float', missing_values='296.15'))
         (Npp, Ntt) = atemp.shape
         global FLAG_DEBUG_PRINT
         if (Npp!=Np):

@@ -42,6 +42,22 @@ FETCH_MARGIN = WING_WN
 # per-process worker state, populated once by _init_worker
 WORKER = {}
 
+def _remap_iso10(tab_name):
+    """The 160-char HITRAN format writes isotopologue #10 as '0' (e.g. 861
+    (13C)(18O)2 lines in the CO2 4.3 um region); HAPI <= 1.3.0.0 does not
+    remap it back and fails with 'cannot find component M,0'. Remap 0 -> 10
+    wherever isotopologue #10 exists for the molecule."""
+    data = hapi1.LOCAL_TABLE_CACHE[tab_name]['data']
+    iso = np.asarray(data['local_iso_id'], dtype=int)
+    zero = (iso == 0)
+    if (not zero.any()):
+        return 0
+    mols = np.asarray(data['molec_id'], dtype=int)
+    fixable = np.array([(int(m), 10) in hapi1.ISO for m in mols[zero]])
+    iso[np.flatnonzero(zero)[fixable]] = 10
+    data['local_iso_id'] = iso.tolist()
+    return int(fixable.sum())
+
 def _init_worker(tab_name, param, Nwn, flags):
     """Pool initializer: make the line list available in this process ONCE.
 
@@ -55,11 +71,26 @@ def _init_worker(tab_name, param, Nwn, flags):
             sys.stdout = open(os.devnull, 'w')   # silence per-point HAPI chatter
         if (tab_name not in hapi1.LOCAL_TABLE_CACHE):
             hapi1.storage2cache(tab_name)
+        _remap_iso10(tab_name)
         wn_begin = float(param[3][1])
         wn_end = float(param[4][1])
         WORKER.update(tab_name=tab_name, param=param, Nwn=Nwn, flags=flags,
                       wngrid=np.linspace(wn_begin, wn_end, Nwn),
+                      FAST=None, N_SLOW=0,
                       init_error=None)
+
+        # Stage-2 fast path: split the table into vectorizable plain-Voigt
+        # lines and beyond-Voigt lines that stay with HAPI
+        profile_name = param[18][1]
+        if (flags.get('fast') and profile_name in ('Voigt', 'SDVoigt', 'HT')):
+            import fast_voigt
+            data = hapi1.LOCAL_TABLE_CACHE[tab_name]['data']
+            flag_lm = flags['line_mixing'] and (profile_name in ('Voigt', 'SDVoigt'))
+            mask_slow = fast_voigt.classify_lines(data, profile_name, flag_lm)
+            WORKER['N_SLOW'] = int(mask_slow.sum())
+            if (WORKER['N_SLOW'] > 0):
+                fast_voigt.make_slow_table(tab_name, 'XMASS_SLOW', mask_slow)
+            WORKER['FAST'] = fast_voigt.build_fast_context(data, ~mask_slow, flag_lm)
     except Exception:
         WORKER['init_error'] = traceback.format_exc()
 
@@ -191,6 +222,7 @@ def ParallelPart(tasks, ParametersCalculation, Nwn, co_hdf5, dataset_name, METHO
         'line_mixing':     FLAG_LINE_MIXING,
         'remove_pedestal': readSwitchByName(ParametersCalculation, 'Remove_pedestal'),
         'keep_dat':        readSwitchByName(ParametersCalculation, 'Keep_dat'),
+        'fast':            readSwitchByName(ParametersCalculation, 'Fast_Voigt', True),
         'quiet_workers':   quiet,
     }
 
@@ -199,6 +231,7 @@ def ParallelPart(tasks, ParametersCalculation, Nwn, co_hdf5, dataset_name, METHO
     LOG.info('Line mixing (1st-order Rosenkranz): %s'%('ON' if flags['line_mixing'] else 'OFF'))
     LOG.info('Pedestal removal: %s'%('ON' if flags['remove_pedestal'] else 'OFF'))
     LOG.info('Keep per-point .dat files: %s'%('ON' if flags['keep_dat'] else 'OFF'))
+    LOG.info('Fast vectorized Voigt path: %s'%('ON' if flags['fast'] else 'OFF'))
 
     tab_name = 'HITRAN2020'
 
@@ -320,6 +353,18 @@ def CalculateXsec(task):
             print('Pressure=%6.2e, temperature=%7.2f'%(pres,Temp))
             print('*** END: X-sec ***\n')
 
+        profile_functions = {
+            'HT':      hapi1.absorptionCoefficient_HT,
+            'SDVoigt': hapi1.absorptionCoefficient_SDVoigt,
+            'Voigt':   hapi1.absorptionCoefficient_Voigt,
+            'Lorentz': hapi1.absorptionCoefficient_Lorentz,
+        }
+        if (profile_name not in profile_functions):
+            return (ip, it, iv, None, 'unknown profile name: %r'%profile_name)
+        profile_fn = profile_functions[profile_name]
+        # first-order Rosenkranz mixing is defined for Voigt/SDVoigt
+        lm = FLAG_LINE_MIXING and (profile_name in ('Voigt', 'SDVoigt'))
+
         # WavenumberGrid pins the calculation to the exact grid stored in the
         # 'Wavenumber' dataset (HAPI's internal grid differs in the last ulp)
         kwargs = dict(SourceTables=tab_name, HITRAN_units=True,
@@ -328,16 +373,21 @@ def CalculateXsec(task):
                       WavenumberWing=WING_WN, OmegaWingHW=0.0,
                       Environment={'T':Temp,'p':pres},
                       Diluent=diluent)
-        if (profile_name == 'HT'):
-            nu_co,coef_co = hapi1.absorptionCoefficient_HT(LineMixingRosen=False, **kwargs)
-        elif (profile_name == 'SDVoigt'):
-            nu_co,coef_co = hapi1.absorptionCoefficient_SDVoigt(LineMixingRosen=FLAG_LINE_MIXING, **kwargs)
-        elif (profile_name == 'Voigt'):
-            nu_co,coef_co = hapi1.absorptionCoefficient_Voigt(LineMixingRosen=FLAG_LINE_MIXING, **kwargs)
-        elif (profile_name == 'Lorentz'):
-            nu_co,coef_co = hapi1.absorptionCoefficient_Lorentz(LineMixingRosen=False, **kwargs)
+
+        if (WORKER.get('FAST') is not None):
+            # Stage-2 hybrid: vectorized Voigt for the plain lines, HAPI for
+            # the beyond-Voigt subset, both on the identical grid
+            import fast_voigt
+            nu_co = wngrid
+            coef_co = fast_voigt.xsec_fast_voigt(WORKER['FAST'], wngrid, Temp,
+                                                 pres, diluent, lm, WING_WN)
+            if (WORKER['N_SLOW'] > 0):
+                kwargs_slow = dict(kwargs)
+                kwargs_slow['SourceTables'] = 'XMASS_SLOW'
+                _, coef_slow = profile_fn(LineMixingRosen=lm, **kwargs_slow)
+                coef_co = coef_co + coef_slow
         else:
-            return (ip, it, iv, None, 'unknown profile name: %r'%profile_name)
+            nu_co,coef_co = profile_fn(LineMixingRosen=lm, **kwargs)
 
         if (FLAG_REMOVE_PEDESTAL):
             coef_co = coef_co - PedestalSpectrum(nu_co, tab_name, Temp, pres, diluent, WING_WN)

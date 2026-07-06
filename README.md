@@ -8,6 +8,7 @@ A Python tool (**X-MASS**) for the batch calculation of absorption cross-section
 - Advanced line profiles via HAPI: Voigt, speed-dependent Voigt, Hartmann-Tran, Lorentz; optional first-order (Rosenkranz) line mixing for Voigt/SDVoigt.
 - 25 cm⁻¹ absolute wing cutoff (the recommended community standard and the MT_CKD "local line" convention), with an optional Lorentz-pedestal ("plinth") removal for use together with the MT_CKD continuum without double counting.
 - NASA-ABSCO-format 4-D HDF5 output (`P × T × VMR × ν`), gzip+shuffle compressed, written incrementally — memory use stays at one spectrum regardless of grid size.
+- Vectorized Voigt fast path (`scipy.special.wofz`, on by default): plain-Voigt lines are evaluated in line-blocks while lines carrying beyond-Voigt parameters keep going through HAPI — validated to <=1e-5 (peak-normalized) against the pure-HAPI reference, with ~10-14x speedups for H2O/CO2-sized line lists.
 - Multiprocessing parallelism with per-worker line-list caching; a failed grid point is reported and left as a NaN row instead of killing the run.
 - Command-line interface with input validation (`--validate-only`) and full run logging to `output.log`.
 
@@ -50,6 +51,7 @@ options:
   --method {PLAIN,PC,MULTITHREADING}   override the calculation method
   --cores N         override Number_cores from the params file
   --keep-dat        also write the legacy per-point .dat text files
+  --fast/--no-fast  force the vectorized fast path on/off
   --validate-only   check all inputs, print a run summary, exit
   --quiet           no console output (everything goes to output.log)
   --version         show version
@@ -93,6 +95,7 @@ lines 1–16 are positional, the switches below them are recognized by name:
 | `Line_mixing`      | `ON`/`OFF`: first-order (Rosenkranz) line mixing for Voigt/SDVoigt, where HITRAN provides the parameters |
 | `Remove_pedestal`  | `ON`/`OFF`: subtract the 25 cm⁻¹ Lorentz pedestal (MT_CKD-consistent local-line tables) |
 | `Keep_dat`         | `ON`/`OFF`: also write the legacy per-point `.dat` text files  |
+| `Fast_Voigt`       | `ON`/`OFF` (default ON): vectorized Voigt fast path; `OFF` forces the pure-HAPI reference route |
 | `Legacy_VMS_names` | `ON`/`OFF`: name the broadener dataset `Broadener_XX_VMS` (pre-0.9 convention) instead of the ABSCO-conformant `..._VMR` |
 
 ### Calculation methods
@@ -122,12 +125,17 @@ Cross-sections use an absolute wing cutoff of 25 cm⁻¹, the de facto Earth rem
 
 Note that beyond-Voigt parameters are available in HITRAN for a subset of molecules and transitions; where they are absent, the calculation falls back to the Voigt parametrization (this is a property of the database, not of the code).
 
+## Performance and accuracy notes
+
+With `Fast_Voigt:ON` (default), lines without beyond-Voigt parameters are evaluated with `scipy.special.wofz` in vectorized blocks; lines with speed-dependent/HT/profile-specific line-mixing parameters are evaluated by HAPI on the identical wavenumber grid and summed. `tools/compare_fast.py` validates the two routes against each other; residuals are bounded by the accuracy of HAPI's own `hum1_wei` complex-probability function (~4e-6 near line cores) — the fast path uses the more accurate `wofz` (~1e-13). Use `--no-fast` to reproduce the pure-HAPI route exactly.
+
 ## Troubleshooting
 
 - **`KeyError` in workers with older HAPI**: do not call `cache2storage()` after `fetch_by_ids()` — in HAPI ≤ 1.3.0.0 it corrupts the stored header of tables fetched with extra parameter groups (X-MASS avoids this internally).
 - **HAPI banner prints even with `--quiet`**: HAPI prints its banner at import time; it is harmless.
 - **No internet**: the line list is fetched from hitran.org on every run; offline runs are currently not supported.
 - **`Number_cores` larger than the machine**: the run aborts; use `--cores` to override without editing files.
+- **`cannot find component M,0`**: the 160-char HITRAN format writes isotopologue #10 as `0` (e.g. 861 CO2 lines near 4.3 um); X-MASS remaps it automatically at worker startup.
 
 ## Credits
 

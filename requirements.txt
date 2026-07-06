@@ -3,5 +3,6 @@ numpy
 h5py
 matplotlib
 nest_asyncio
+scipy
 # HITRAN Application Programming Interface; tested with HAPI 1.3.0.0
 hitran-api>=1.2

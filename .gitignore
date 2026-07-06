@@ -10,3 +10,5 @@ output.log
 profiling_results.*
 examples/**/*.hdf5
 examples/**/*.png
+gate_*/
+bench_*/

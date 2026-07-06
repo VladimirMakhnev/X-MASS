@@ -21,3 +21,4 @@ Profile_group:160-char
 Line_mixing:ON
 Remove_pedestal:OFF
 Keep_dat:OFF
+Fast_Voigt:ON
