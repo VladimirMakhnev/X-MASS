@@ -124,6 +124,20 @@ def openXgenetareWn(fname,params):
         print('%s file is not found!'%fname)
         sys.exit()
 
+# name-based lookup for option keys; use only with keys that appear at most
+# once in the parameter file (legacy duplicated keys stay positional)
+def readParamByName(params, name, default=None):
+    for item in params:
+        if (item[0].strip() == name) and (len(item) > 1):
+            return item[1].strip()
+    return default
+
+def readSwitchByName(params, name, default=False):
+    val = readParamByName(params, name)
+    if (val is None):
+        return default
+    return val.upper() in ('ON', 'TRUE', 'YES', '1')
+
 # collects the pressures/temperatures/volume mixing ration into the pTVMS array
 def mergeParams(P,T,VMS):
     onevisionlist = []

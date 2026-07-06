@@ -41,7 +41,10 @@ xsec3 = fnam['Gas_%02d_Absorption'%molec_id][()][ip,it+1,ivms,:]
 # print(xsec)
 p1 = fnam['Pressure'][()][ip]
 T1 = fnam['Temperature'][()][ip,it]
-vms = fnam['Broadener_00_VMS'][()][ivms]
+try:
+    vms = fnam['Broadener_00_VMR'][()][ivms]
+except KeyError:  # tables written before the ABSCO-conformant renaming
+    vms = fnam['Broadener_00_VMS'][()][ivms]
 p2 = fnam['Pressure'][()][ip+1]
 T2 = fnam['Temperature'][()][ip+1,it]
 p3 = fnam['Pressure'][()][ip]
