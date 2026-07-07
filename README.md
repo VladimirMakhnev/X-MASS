@@ -96,6 +96,7 @@ lines 1–16 are positional, the switches below them are recognized by name:
 | `Remove_pedestal`  | `ON`/`OFF`: subtract the 25 cm⁻¹ Lorentz pedestal (MT_CKD-consistent local-line tables) |
 | `Keep_dat`         | `ON`/`OFF`: also write the legacy per-point `.dat` text files  |
 | `Fast_Voigt`       | `ON`/`OFF` (default ON): vectorized Voigt fast path; `OFF` forces the pure-HAPI reference route |
+| `Iso_list`         | optional comma-separated HITRAN *global* isotopologue IDs overriding the built-in per-molecule list (e.g. `26` for pure ¹²C¹⁶O) |
 | `Legacy_VMS_names` | `ON`/`OFF`: name the broadener dataset `Broadener_XX_VMS` (pre-0.9 convention) instead of the ABSCO-conformant `..._VMR` |
 
 ### Calculation methods

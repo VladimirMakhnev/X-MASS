@@ -1,4 +1,4 @@
-from initial import FLAG_DEBUG_PRINT, readSwitchByName
+from initial import FLAG_DEBUG_PRINT, readSwitchByName, readParamByName
 
 import numpy as np
 
@@ -213,6 +213,12 @@ def ParallelPart(tasks, ParametersCalculation, Nwn, co_hdf5, dataset_name, METHO
                  # To be updated!                          
 
     iso_list = iso_array[molec_id-1]
+
+    # optional override of the isotopologue selection (comma-separated HITRAN
+    # global isotopologue IDs), e.g. Iso_list:26 for pure (12C)(16O)
+    iso_override = readParamByName(ParametersCalculation, 'Iso_list')
+    if (iso_override):
+        iso_list = [int(x) for x in iso_override.replace(',', ' ').split()]
 
 
 
