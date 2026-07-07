@@ -40,10 +40,24 @@ SLOW_PREFIXES = {
                 'kappa_ht_', 'eta_ht_'],
     'Voigt':   [],
 }
+# Line-mixing columns do NOT make a line slow for Voigt/SDVoigt: with no
+# speed-dependence widths present, HAPI evaluates such lines as Voigt plus
+# the first-order Y term (pcqsdhc with Gamma2=Delta2=0), which the fast path
+# reproduces analytically -- only the Y source columns differ per profile
+# (y_air/y_self for Voigt, Y_SDV_*_296 for SDVoigt).
 SLOW_PREFIXES_LM = {
-    'SDVoigt': ['y_sdv_'],
+    'SDVoigt': [],
     'HT':      ['y_ht_'],
-    'Voigt':   [],   # y_air/y_self are handled analytically in the fast path
+    'Voigt':   [],
+}
+
+# per-profile database columns feeding the analytic Y term
+Y_COLUMNS = {
+    'Voigt':   ('y_air', 'n_y_air', 'y_self', 'n_y_self'),
+    'SDVoigt': ('Y_SDV_air_296', 'n_Y_SDV_air_296',
+                'Y_SDV_self_296', 'n_Y_SDV_self_296'),
+    'HT':      ('Y_HT_air_296', 'n_Y_HT_air_296',
+                'Y_HT_self_296', 'n_Y_HT_self_296'),
 }
 
 
@@ -105,7 +119,7 @@ def make_slow_table(src, dst, mask_slow):
     hapi1.LOCAL_TABLE_CACHE[dst] = {'header': header, 'data': data_dst}
 
 
-def build_fast_context(data, mask_fast, flag_lm):
+def build_fast_context(data, mask_fast, flag_lm, profile_name='Voigt'):
     """Contiguous per-line arrays for the fast lines."""
     n_all = len(data['nu'])
     idx = np.flatnonzero(np.asarray(mask_fast))
@@ -136,8 +150,10 @@ def build_fast_context(data, mask_fast, flag_lm):
     ctx['n_self_eff'] = np.ascontiguousarray(n_self_eff[idx])
 
     if flag_lm:
-        for name in ('y_air', 'n_y_air', 'y_self', 'n_y_self'):
-            ctx[name] = take(name)
+        src_names = Y_COLUMNS[profile_name]
+        for name, src_name in zip(('y_air', 'n_y_air', 'y_self', 'n_y_self'),
+                                  src_names):
+            ctx[name] = take(src_name)   # data dict lookups are caseless
     ctx['flag_lm_columns'] = bool(flag_lm)
 
     # Doppler HWHM = doppler_coef * sqrt(T); replicates hapi's

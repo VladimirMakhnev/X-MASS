@@ -90,7 +90,7 @@ def _init_worker(tab_name, param, Nwn, flags):
             WORKER['N_SLOW'] = int(mask_slow.sum())
             if (WORKER['N_SLOW'] > 0):
                 fast_voigt.make_slow_table(tab_name, 'XMASS_SLOW', mask_slow)
-            WORKER['FAST'] = fast_voigt.build_fast_context(data, ~mask_slow, flag_lm)
+            WORKER['FAST'] = fast_voigt.build_fast_context(data, ~mask_slow, flag_lm, profile_name)
     except Exception:
         WORKER['init_error'] = traceback.format_exc()
 
