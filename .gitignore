@@ -12,3 +12,4 @@ examples/**/*.hdf5
 examples/**/*.png
 gate_*/
 bench_*/
+paper_bench/
