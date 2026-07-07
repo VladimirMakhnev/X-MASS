@@ -70,6 +70,9 @@ def parse_cli():
                              'and exit without calculating')
     parser.add_argument('--quiet', action='store_true',
                         help='no console output (everything goes to output.log only)')
+    parser.add_argument('--profile', action='store_true',
+                        help='profile the run with cProfile (adds overhead; '
+                             'results in profiling_results.prof/.txt)')
     parser.add_argument('--version', action='version',
                         version='X-MASS %s'%XMASSSEC_VERSION)
     return parser.parse_args()
@@ -131,8 +134,9 @@ if __name__ == "__main__":
 
     LOG.info("Timer started")
     t_begin = time.time()
-    profiler = cProfile.Profile()
-    profiler.enable()
+    if (args.profile):
+        profiler = cProfile.Profile()
+        profiler.enable()
 
     LOG.info("***********************************************")
     LOG.info("*** PARAMETERS HANDLING ***********************")
@@ -206,14 +210,15 @@ if __name__ == "__main__":
     # Closing the HDF5 file
     hdf5_io.CloseHDF5(co_hdf5)
 
-    profiler.disable()
-    # profiling results go to their own files, not into the run log
-    profiler.dump_stats("profiling_results.prof")
-    with open("profiling_results.txt", 'w') as pf:
-        stats = pstats.Stats("profiling_results.prof", stream=pf)
-        pf.write("Sorted by cumulative time:\n")
-        stats.sort_stats("cumulative").print_stats()
-    LOG.info('Profiler output: profiling_results.prof / profiling_results.txt')
+    if (args.profile):
+        profiler.disable()
+        # profiling results go to their own files, not into the run log
+        profiler.dump_stats("profiling_results.prof")
+        with open("profiling_results.txt", 'w') as pf:
+            stats = pstats.Stats("profiling_results.prof", stream=pf)
+            pf.write("Sorted by cumulative time:\n")
+            stats.sort_stats("cumulative").print_stats()
+        LOG.info('Profiler output: profiling_results.prof / profiling_results.txt')
 
     t_end = time.time()
     LOG.info('Time taken: %d seconds'%(t_end-t_begin))
